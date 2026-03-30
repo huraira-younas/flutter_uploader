@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 
-from uploader.core.constants import (
+from core.constants import (
     DEFAULT_GMAIL_RECIPIENTS,
     DRIVE_SCOPES,
     FOLDER_MIME,
@@ -12,7 +12,7 @@ from uploader.core.constants import (
     OUTPUTS_DIR,
     UPLOADER_DIR,
 )
-from uploader.helpers.types import LogFn, StopCheckFn
+from helpers.types import LogFn, StopCheckFn
 
 
 def _resolve_env_path(raw: str) -> Path:
@@ -38,7 +38,7 @@ def _email_drive_link(
     version: str = "",
     build: str = "",
 ) -> bool:
-    from uploader.helpers.build_report import send_drive_link_email
+    from helpers.build_report import send_drive_link_email
     return send_drive_link_email(
         link=link, label=label,
         file_names=file_names or [],

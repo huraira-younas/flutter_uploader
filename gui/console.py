@@ -5,9 +5,9 @@ from __future__ import annotations
 import customtkinter as ctk
 import tkinter as tk
 
-from uploader.helpers.platform_utils import is_macos
-from uploader.gui.theme import COLORS, RADIUS, PAD
-from uploader.gui.widgets import section_label
+from helpers.platform_utils import is_macos
+from gui.theme import COLORS, RADIUS, PAD
+from gui.widgets import section_label
 
 
 class ConsolePanel(ctk.CTkFrame):

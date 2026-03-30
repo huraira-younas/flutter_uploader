@@ -5,10 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from uploader.core.constants import (
-    StepDef,
+from core.constants import (
     COMMON_STEPS, GIT_PRE_STEPS, ANDROID_STEPS, IOS_STEPS,
     GIT_POST_STEPS, POST_STEPS,
+    StepDef,
 )
 
 
@@ -59,12 +59,12 @@ class PipelineConfig:
     def run_kwargs(self) -> dict:
         return {
             "android_build_mode": self.android_build_mode,
+            "quit_after_power": self.quit_after_power,
             "drive_email_link_to": self.recipients,
             "ios_build_mode": self.ios_build_mode,
             "commit_message": self.commit_message,
             "pub_upgrade": self.pub_upgrade,
             "power_mode": self.power_mode,
-            "quit_after_power": self.quit_after_power,
             "version": self.version,
             "build": self.build,
         }

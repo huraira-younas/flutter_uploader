@@ -2,33 +2,35 @@
 
 from __future__ import annotations
 
+from collections import deque
 from threading import Thread
 import tkinter as tk
 import atexit
 import queue
 import sys
 import time
-import os
 
-from uploader.core.constants import (
-    APP_TITLE, APP_VERSION, StepDef, StepResult,
+from core.constants import (
     COMMON_STEPS, GIT_PRE_STEPS, ANDROID_STEPS, IOS_STEPS,
+    APP_TITLE, APP_VERSION, StepDef, StepResult,
     GIT_POST_STEPS, POST_STEPS,
+    MAX_REPORT_LOG_LINES,
 )
-from uploader.core.pipeline_config import (
-    PipelineConfig, ALL_STEP_DEFS,
+from core.pipeline_config import (
     ordered_steps, step_enabled_filter,
+    PipelineConfig, ALL_STEP_DEFS,
 )
-from uploader.helpers.platform_utils import is_macos, is_shorebird_available
-from uploader.helpers.build_report import send_build_report
-from uploader.helpers.shell import terminate_active_processes
-from uploader.helpers.types import fmt_elapsed
-from uploader.helpers.version import write_version
-from uploader.gui.theme import COLORS, RADIUS, PAD
-from uploader.gui.cards import CardBuilderMixin
-from uploader.gui.console import ConsolePanel
-from uploader.gui.readme import ReadMePanel
-from uploader.core.run import run_selected
+from helpers.platform_utils import is_macos, is_shorebird_available
+from helpers.shell import terminate_active_processes
+from helpers.build_report import send_build_report
+from helpers.types import fmt_elapsed
+
+from helpers.version import write_version
+from gui.theme import COLORS, RADIUS, PAD
+from gui.cards import CardBuilderMixin
+from gui.console import ConsolePanel
+from gui.readme import ReadMePanel
+from core.run import run_selected
 import customtkinter as ctk
 
 
@@ -469,7 +471,7 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
 
         platforms_str = cfg.platforms_label()
 
-        log_buffer: list[str] = []
+        log_buffer: deque[str] = deque(maxlen=MAX_REPORT_LOG_LINES)
         step_results: list[StepResult] = []
 
         def tee_log(text: str):
@@ -541,7 +543,7 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
             total_elapsed = fmt_elapsed(time.monotonic() - pipeline_start)
             try:
                 send_build_report(
-                    log_lines=log_buffer,
+                    log_lines=list(log_buffer),
                     step_results=step_results,
                     version=cfg.version,
                     build=cfg.build,
@@ -574,12 +576,9 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
 
 def main(run_deps: bool = True) -> None:
     """Start the GUI; *run_deps* runs pip install for ``requirements.txt`` when True."""
-    from uploader.core.constants import FLUTTER_PROJECT_ROOT
-
-    os.chdir(FLUTTER_PROJECT_ROOT)
     atexit.register(terminate_active_processes)
     if run_deps:
-        from uploader.run import _ensure_deps
+        from run import _ensure_deps
         _ensure_deps(print)
     app = BuildApp()
     app.mainloop()

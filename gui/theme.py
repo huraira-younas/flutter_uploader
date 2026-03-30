@@ -1,6 +1,6 @@
 import customtkinter as ctk
 
-from uploader.core.constants import COLORS, RADIUS, PAD
+from core.constants import COLORS, RADIUS, PAD
 
 __all__ = ["COLORS", "RADIUS", "PAD"]
 

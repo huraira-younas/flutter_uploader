@@ -1,14 +1,14 @@
 """Platform detection and shutdown / sleep helpers."""
 
-import os
-import platform
-import subprocess
-import threading
 from collections.abc import Callable
 from pathlib import Path
+import subprocess
+import threading
+import platform
+import os
 
-from uploader.core.constants import POWER_DELAY
-from uploader.helpers.types import LogFn
+from core.constants import POWER_DELAY
+from helpers.types import LogFn
 
 
 def is_macos() -> bool:

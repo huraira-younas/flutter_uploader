@@ -9,10 +9,10 @@ import customtkinter as ctk
 import os
 
 
-from uploader.core.constants import DEFAULT_GMAIL_RECIPIENTS, StepDef
-from uploader.gui.widgets import card, section_label
-from uploader.gui.theme import COLORS, RADIUS, PAD
-from uploader.helpers.version import read_version
+from core.constants import DEFAULT_GMAIL_RECIPIENTS, StepDef
+from gui.widgets import card, section_label
+from gui.theme import COLORS, RADIUS, PAD
+from helpers.version import read_version
 
 
 class CardBuilderMixin:

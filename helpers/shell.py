@@ -8,8 +8,8 @@ import signal
 import shutil
 import os
 
-from uploader.core.constants import IS_WIN, ORPHAN_PATTERNS
-from uploader.helpers.types import LogFn, StopCheckFn
+from core.constants import IS_WIN, ORPHAN_PATTERNS
+from helpers.types import LogFn, StopCheckFn
 
 _ACTIVE_PROCS: set[subprocess.Popen[str]] = set()
 _PROCS_LOCK = Lock()
@@ -229,3 +229,31 @@ def run_cmd(
             _terminate_proc(proc)
         else:
             _unregister_process(proc)
+
+
+class CommandRunner:
+    """Bound command runner that avoids passing cwd throughout the call graph."""
+
+    def __init__(self, *, project_root: Path):
+        self.project_root = project_root
+
+    def run_in(
+        self,
+        cmd: list[str],
+        cwd: Path,
+        log: LogFn,
+        *,
+        header: str | None = None,
+        stop_check: StopCheckFn | None = None,
+    ) -> bool:
+        return run_cmd(cmd, cwd, log, header=header, stop_check=stop_check)
+
+    def run_project(
+        self,
+        cmd: list[str],
+        log: LogFn,
+        *,
+        header: str | None = None,
+        stop_check: StopCheckFn | None = None,
+    ) -> bool:
+        return self.run_in(cmd, self.project_root, log, header=header, stop_check=stop_check)

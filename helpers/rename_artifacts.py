@@ -4,8 +4,8 @@ from pathlib import Path
 import shutil
 import re
 
-from uploader.core.constants import APK_DIR, IPA_DIR, OUTPUTS_DIR, ABI_PATTERN, PLAIN_RELEASE
-from uploader.helpers.types import LogFn
+from core.constants import APK_DIR, IPA_DIR, OUTPUTS_DIR, ABI_PATTERN, PLAIN_RELEASE
+from helpers.types import LogFn
 
 
 def _sanitize(s: str) -> str:

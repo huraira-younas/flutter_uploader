@@ -12,13 +12,13 @@ from html import escape
 import smtplib
 import os
 
-from uploader.core.constants import (
+from core.constants import (
     REPORT_BODY_OPEN, REPORT_BODY_CLOSE, REPORT_BORDER_LR,
     APP_TITLE, APP_VERSION, LOGS_DIR, StepResult,
     REPORT_SECTION_H2, REPORT_TH_STYLE,
 )
 
-from uploader.helpers.types import LogFn, fmt_elapsed
+from helpers.types import LogFn, fmt_elapsed
 
 
 # ── Shared HTML fragments ────────────────────────────────────────────────────

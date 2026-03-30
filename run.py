@@ -1,26 +1,22 @@
 """GUI/CLI entry: ``python run.py`` · ``--cli`` · ``--list-steps`` · ``--no-install``."""
 
-from pathlib import Path
+from collections import deque
 import subprocess
 import argparse
 import threading
 import time
 import sys
-import os
-import types
 
-_UPLOADER_DIR = Path(__file__).resolve().parent
-_uploader_pkg = types.ModuleType("uploader")
-_uploader_pkg.__path__ = [str(_UPLOADER_DIR)]  # type: ignore[attr-defined]
-sys.modules["uploader"] = _uploader_pkg
-
-from uploader.core.constants import UPLOADER_DIR, APP_TITLE, StepResult, FLUTTER_PROJECT_ROOT
-
-os.chdir(FLUTTER_PROJECT_ROOT)
+from core.constants import (
+    MAX_REPORT_LOG_LINES,
+    UPLOADER_DIR,
+    StepResult,
+    APP_TITLE,
+)
 
 
 def _load_dotenv() -> None:
-    from uploader.core.constants import load_dotenv_files
+    from core.constants import load_dotenv_files
 
     load_dotenv_files()
 
@@ -131,7 +127,7 @@ def _build_cli_parser() -> argparse.ArgumentParser:
 
 
 def _print_steps() -> None:
-    from uploader.core.pipeline_config import list_steps
+    from core.pipeline_config import list_steps
     print(f"\n{APP_TITLE} — valid step keys:\n")
     print(f"  {'KEY':<20} {'LABEL':<25} SECTION")
     print(f"  {'─' * 20} {'─' * 25} {'─' * 10}")
@@ -142,17 +138,17 @@ def _print_steps() -> None:
 
 
 def _run_cli(args: argparse.Namespace) -> None:
-    from uploader.core.pipeline_config import (
+    from core.pipeline_config import (
         PipelineConfig, ordered_steps, step_enabled_filter,
         validate_step_keys, validate_build_mode, validate_power_mode,
         ALL_STEP_DEFS,
     )
-    from uploader.helpers.platform_utils import is_macos
-    from uploader.helpers.build_report import send_build_report
-    from uploader.helpers.version import read_version, write_version
-    from uploader.helpers.shell import terminate_active_processes
-    from uploader.helpers.types import fmt_elapsed
-    from uploader.core.run import run_selected
+    from helpers.platform_utils import is_macos
+    from helpers.build_report import send_build_report
+    from helpers.version import read_version, write_version
+    from helpers.shell import terminate_active_processes
+    from helpers.types import fmt_elapsed
+    from core.run import run_selected
 
     version, build_num = read_version()
     version = args.version or version
@@ -197,7 +193,7 @@ def _run_cli(args: argparse.Namespace) -> None:
     step_filter = step_enabled_filter(cfg)
     platforms_str = cfg.platforms_label()
 
-    log_buffer: list[str] = []
+    log_buffer: deque[str] = deque(maxlen=MAX_REPORT_LOG_LINES)
     step_results: list[StepResult] = []
     step_times: dict[str, float] = {}
 
@@ -259,7 +255,7 @@ def _run_cli(args: argparse.Namespace) -> None:
         total_elapsed = fmt_elapsed(time.monotonic() - pipeline_start)
         try:
             send_build_report(
-                log_lines=log_buffer,
+                log_lines=list(log_buffer),
                 step_results=step_results,
                 version=cfg.version,
                 build=cfg.build,
@@ -300,7 +296,7 @@ def main() -> None:
     try:
         if not args.no_install:
             _ensure_deps()
-        from uploader.gui.app import main as app_main
+        from gui.app import main as app_main
         app_main(run_deps=False)
     except Exception:
         import traceback

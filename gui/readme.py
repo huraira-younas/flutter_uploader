@@ -8,7 +8,7 @@ from pathlib import Path
 import customtkinter as ctk
 from bs4 import BeautifulSoup, NavigableString, Tag
 
-from uploader.core.constants import (
+from core.constants import (
     CLI_REFERENCE_PATH,
     CODE_BG,
     CODE_BORDER,
@@ -18,8 +18,8 @@ from uploader.core.constants import (
     README_PATH,
     UPLOADER_DIR,
 )
-from uploader.gui.theme import RADIUS, PAD
-from uploader.gui.widgets import card, section_label
+from gui.theme import RADIUS, PAD
+from gui.widgets import card, section_label
 
 _MD_EXTENSIONS = (
     "markdown.extensions.fenced_code",

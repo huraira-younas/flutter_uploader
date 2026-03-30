@@ -7,9 +7,7 @@ import sys
 APP_TITLE = "Flutter Uploader"
 APP_VERSION = "5.4"
 
-
 IS_WIN = sys.platform == "win32"
-
 
 UPLOADER_DIR = Path(__file__).resolve().parent.parent
 
@@ -48,9 +46,11 @@ FLUTTER_PROJECT_ROOT = _require_flutter_project_root()
 
 APK_DIR = FLUTTER_PROJECT_ROOT / "build" / "app" / "outputs" / "flutter-apk"
 IPA_DIR = FLUTTER_PROJECT_ROOT / "build" / "ios" / "ipa"
-README_PATH = UPLOADER_DIR / "README.md"
+
 CLI_REFERENCE_PATH = UPLOADER_DIR / "CLI_REFERENCE.md"
 ENVIRONMENT_PATH = UPLOADER_DIR / "ENVIRONMENT.md"
+README_PATH = UPLOADER_DIR / "README.md"
+
 PUBSPEC = FLUTTER_PROJECT_ROOT / "pubspec.yaml"
 OUTPUTS_DIR = UPLOADER_DIR / "outputs"
 LOGS_DIR = UPLOADER_DIR / "logs"
@@ -142,6 +142,8 @@ REPORT_TH_STYLE = (
     'style="padding:5px 12px;text-align:{align};color:#64748b;font-size:11px;'
     'font-weight:600;text-transform:uppercase;letter-spacing:0.4px;"'
 )
+
+MAX_REPORT_LOG_LINES = 20000
 
 
 StepDef = tuple[str, str, str, bool]

@@ -4,7 +4,7 @@ import os
 import tempfile
 from pathlib import Path
 
-from uploader.core.constants import PUBSPEC, VERSION_RE
+from core.constants import PUBSPEC, VERSION_RE
 
 
 def read_version() -> tuple[str, str]:

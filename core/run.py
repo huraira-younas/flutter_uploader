@@ -2,14 +2,19 @@ from typing import Callable
 import shutil
 import os
 
-from uploader.core.constants import StepDef, FLUTTER_PROJECT_ROOT, OUTPUTS_DIR, APK_DIR, IPA_DIR, POWER_DELAY
-from uploader.helpers.platform_utils import open_folder, shutdown_pc, sleep_pc
-from uploader.helpers.rename_artifacts import (
-    copy_apks_to_outputs, copy_ipas_to_outputs, clear_outputs,
+from core.constants import StepDef, FLUTTER_PROJECT_ROOT, OUTPUTS_DIR, APK_DIR, IPA_DIR, POWER_DELAY
+from helpers.platform_utils import open_folder, shutdown_pc, sleep_pc
+from helpers.drive_upload import upload_outputs_to_drive
+from helpers.types import LogFn, StopCheckFn
+from helpers.shell import CommandRunner
+from helpers.rename_artifacts import (
+    copy_apks_to_outputs, 
+    copy_ipas_to_outputs, 
+    clear_outputs,
 )
-from uploader.helpers.drive_upload import upload_outputs_to_drive
-from uploader.helpers.shell import run_cmd
-from uploader.helpers.types import LogFn, StopCheckFn
+
+
+_CMD = CommandRunner(project_root=FLUTTER_PROJECT_ROOT)
 
 
 def _log_noop(_: str) -> None:
@@ -23,7 +28,7 @@ def _run_project_cmd(
     header: str,
     stop_check: StopCheckFn | None = None,
 ) -> bool:
-    return run_cmd(cmd, FLUTTER_PROJECT_ROOT, log, header=header, stop_check=stop_check)
+    return _CMD.run_project(cmd, log, header=header, stop_check=stop_check)
 
 
 def run_flutter_clean(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
@@ -47,9 +52,9 @@ def run_flutter_pub_upgrade(log: LogFn = _log_noop, stop_check: StopCheckFn | No
 
 def run_git_commit_pre(message: str, log: LogFn = _log_noop) -> bool:
     log(f'\n>> git add . && git commit -m "{message}"\n')
-    if not run_cmd(["git", "add", "."], FLUTTER_PROJECT_ROOT, log):
+    if not _CMD.run_project(["git", "add", "."], log):
         return False
-    run_cmd(["git", "commit", "-m", message], FLUTTER_PROJECT_ROOT, log)
+    _CMD.run_project(["git", "commit", "-m", message], log)
     return True
 
 
@@ -63,10 +68,9 @@ def run_git_pull(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) 
 def run_git_commit_release(version: str, build: str, log: LogFn = _log_noop) -> bool:
     msg = f"v{version} ({build})"
     log(f'\n>> git add . && git commit -m "{msg}"\n')
-    if not run_cmd(["git", "add", "."], FLUTTER_PROJECT_ROOT, log):
+    if not _CMD.run_project(["git", "add", "."], log):
         return False
-    run_cmd(["git", "commit", "-m", msg], FLUTTER_PROJECT_ROOT, log)
-    return True
+    return _CMD.run_project(["git", "commit", "-m", msg], log)
 
 
 def run_git_push(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
@@ -95,10 +99,11 @@ def run_pod_install(log: LogFn = _log_noop, stop_check: StopCheckFn | None = Non
     if not ios_dir.exists():
         log("iOS directory not found. Skipping pod install.\n")
         return False
-    if not run_cmd(["pod", "deintegrate"], ios_dir, log, header="\n>> pod deintegrate\n", stop_check=stop_check):
+    if not _CMD.run_in(["pod", "deintegrate"], ios_dir, log, header="\n>> pod deintegrate\n", stop_check=stop_check):
         return False
-    run_cmd(["pod", "repo", "update"], ios_dir, log, header="\n>> pod repo update\n", stop_check=stop_check)
-    return run_cmd(["pod", "install"], ios_dir, log, header="\n>> pod install\n", stop_check=stop_check)
+    if not _CMD.run_in(["pod", "repo", "update"], ios_dir, log, header="\n>> pod repo update\n", stop_check=stop_check):
+        return False
+    return _CMD.run_in(["pod", "install"], ios_dir, log, header="\n>> pod install\n", stop_check=stop_check)
 
 
 def run_build_ipa(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
@@ -139,14 +144,14 @@ def run_appstore_upload(
         return False
 
     ipa_path = ipa_files[0]
-    return run_cmd(
+    return _CMD.run_project(
         [
             "xcrun", "altool", "--upload-app", "--type", "ios",
             "-f", str(ipa_path),
             "--apiKey", api_key,
             "--apiIssuer", issuer_id,
         ],
-        FLUTTER_PROJECT_ROOT, log,
+        log,
         header=f"\n>> Uploading {ipa_path.name} to App Store Connect\n",
         stop_check=stop_check,
     )
@@ -279,7 +284,12 @@ def run_selected(
     quit_after_power: bool = False,
     schedule_quit_after_seconds: Callable[[float], None] | None = None,
 ) -> bool:
-    clear_outputs()
+    should_clear_outputs = any(
+        key in {"build_apk", "build_ipa"} and step_enabled(key)
+        for key, _label, _desc, _critical in steps
+    )
+    if should_clear_outputs:
+        clear_outputs()
     runners = _build_runners(
         version, build, drive_email_link_to, stop_check,
         android_build_mode=android_build_mode,

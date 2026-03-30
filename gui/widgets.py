@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import customtkinter as ctk
 
-from uploader.gui.theme import COLORS, RADIUS
+from gui.theme import COLORS, RADIUS
 
 
 def card(parent: ctk.CTkFrame, **grid_opts) -> ctk.CTkFrame:
