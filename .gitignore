@@ -45,8 +45,7 @@ htmlcov/
 .tox/
 
 # ── Optional local launcher scripts (repo root; same as `python3 run.py`) ─────
-/senpai
-/uploader
+# /uploader
 
 # ── OS & editors ──────────────────────────────────────────────────────────────
 .DS_Store
