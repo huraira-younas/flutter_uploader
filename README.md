@@ -17,6 +17,8 @@ Standalone Python app: **`FLUTTER_PROJECT_ROOT`** in **`.env`** points at the Fl
 ```bash
 cd /path/to/this/repo
 python3 run.py          # GUI — Windows: python run.py
+# OR
+./uploader # to run GUI on Windows or MAC 
 ```
 
 `--cli` runs headless. See [`CLI_REFERENCE.md`](CLI_REFERENCE.md). Dependencies install unless `--no-install`.
