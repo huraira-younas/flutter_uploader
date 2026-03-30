@@ -1,0 +1,60 @@
+# ── Secrets & local env (never commit) ────────────────────────────────────────
+# `.env*` matches `.env`, `.env.local`, etc.; keep the example file committable.
+.env*
+!.env.example
+*.env
+
+# Google Drive OAuth (client secret + cached user token)
+gdrive_token.json
+gdrive.json
+**/client_secret*.json
+credentials.json
+
+# App Store Connect API private keys
+*.p8
+AuthKey_*.p8
+private_keys/
+
+# ── Generated output ──────────────────────────────────────────────────────────
+logs/
+outputs/
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+.envrc
+*.egg
+*.egg-info/
+.eggs/
+dist/
+build/
+pip-wheel-metadata/
+
+# ── Tooling / tests ───────────────────────────────────────────────────────────
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+
+# ── Optional local launcher scripts (repo root; same as `python3 run.py`) ─────
+/senpai
+/uploader
+
+# ── OS & editors ──────────────────────────────────────────────────────────────
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# ── Flutter / Dart (artifacts if copied into this tree) ───────────────────────
+.dart_tool/
+**/android/.gradle/
