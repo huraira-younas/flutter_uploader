@@ -12,12 +12,19 @@ IS_WIN = sys.platform == "win32"
 UPLOADER_DIR = Path(__file__).resolve().parent.parent
 
 
+_dotenv_loaded = False
+
+
 def load_dotenv_files() -> None:
+    global _dotenv_loaded
+    if _dotenv_loaded:
+        return
     try:
         from dotenv import load_dotenv
     except ImportError:
         return
     load_dotenv(UPLOADER_DIR / ".env")
+    _dotenv_loaded = True
 
 
 load_dotenv_files()
@@ -56,39 +63,14 @@ OUTPUTS_DIR = UPLOADER_DIR / "outputs"
 LOGS_DIR = UPLOADER_DIR / "logs"
 
 
-COLORS: dict[str, str] = {
-    "console_border": "#1e293b",
-    "console_inner": "#010410",
-    "accent_hover": "#7dd3fc",
-    "danger_hover": "#f87171",
-    "card_border": "#1e293b",
-    "console_bg": "#020617",
-    "text_dim": "#475569",
-    "disabled": "#0f172a",
-    "card_bg": "#0f172a",
-    "section": "#94a3b8",
-    "success": "#34d399",
-    "accent": "#38bdf8",
-    "danger": "#ef4444",
-    "error": "#f87171",
-    "hover": "#1e293b",
-    "muted": "#64748b",
-    "text": "#cbd5e1",
-    "warn": "#fbbf24",
-    "cmd": "#38bdf8",
-    "bg": "#020617",
-}
-
-RADIUS: dict[str, int] = {"card": 12, "input": 8, "btn": 10}
-PAD: dict[str, int] = {"sm": 8, "md": 15, "lg": 20}
-
-CODE_BG = "#010410"
-CODE_BORDER = "#1e293b"
-HEADING_COLORS: dict[int, str] = {
-    1: COLORS["accent"],
-    2: COLORS["section"],
-    3: COLORS["accent"],
-}
+REPORT_ACCENT = "#38bdf8"
+REPORT_MUTED = "#64748b"
+REPORT_CARD_BORDER = "#1e293b"
+REPORT_CARD_BG = "#0f172a"
+REPORT_BG = "#020617"
+REPORT_SUCCESS = "#34d399"
+REPORT_ERROR = "#f87171"
+REPORT_SECTION = "#94a3b8"
 
 
 POWER_DELAY = 30
@@ -107,8 +89,6 @@ MIME_MAP: dict[str, str] = {
 ABI_PATTERN = re.compile(r"^app-(.+)-release\.apk$", re.IGNORECASE)
 PLAIN_RELEASE = re.compile(r"^app-release\.apk$", re.IGNORECASE)
 VERSION_RE = re.compile(r"^(version:\s*)(\S+)", re.MULTILINE)
-RE_BOLD = re.compile(r"\*\*(.+?)\*\*")
-RE_CODE = re.compile(r"`(.+?)`")
 
 
 ORPHAN_PATTERNS: list[str] = [
@@ -125,7 +105,7 @@ ORPHAN_PATTERNS: list[str] = [
 
 REPORT_BODY_OPEN = (
     '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"></head>'
-    '<body style="margin:0;padding:0;background-color:#020617;'
+    f'<body style="margin:0;padding:0;background-color:{REPORT_BG};'
     "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,"
     "Helvetica,Arial,sans-serif;\">"
     '<div style="max-width:600px;margin:0 auto;padding:16px 8px;">'
@@ -133,13 +113,13 @@ REPORT_BODY_OPEN = (
 
 REPORT_BODY_CLOSE = "</div></body></html>"
 
-REPORT_BORDER_LR = "border-left:1px solid #1e293b;border-right:1px solid #1e293b;"
+REPORT_BORDER_LR = f"border-left:1px solid {REPORT_CARD_BORDER};border-right:1px solid {REPORT_CARD_BORDER};"
 REPORT_SECTION_H2 = (
-    'style="margin:0;font-size:13px;color:#94a3b8;font-weight:600;'
+    f'style="margin:0;font-size:13px;color:{REPORT_SECTION};font-weight:600;'
     'text-transform:uppercase;letter-spacing:0.8px;"'
 )
 REPORT_TH_STYLE = (
-    'style="padding:5px 12px;text-align:{align};color:#64748b;font-size:11px;'
+    f'style="padding:5px 12px;text-align:{{align}};color:{REPORT_MUTED};font-size:11px;'
     'font-weight:600;text-transform:uppercase;letter-spacing:0.4px;"'
 )
 

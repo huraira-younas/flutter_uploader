@@ -26,9 +26,9 @@ class ConsolePanel(ctk.CTkFrame):
         super().__init__(parent, fg_color="transparent")
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
-        self._fonts = fonts
         self._in_batch = False
         self.visible = False
+        self._fonts = fonts
         self._build()
 
     @property

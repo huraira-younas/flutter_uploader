@@ -11,15 +11,18 @@ import sys
 import time
 
 from core.constants import (
-    COMMON_STEPS, GIT_PRE_STEPS, ANDROID_STEPS, IOS_STEPS,
+    GIT_PRE_STEPS, ANDROID_STEPS, IOS_STEPS,
     APP_TITLE, APP_VERSION, StepDef, StepResult,
     GIT_POST_STEPS, POST_STEPS,
     MAX_REPORT_LOG_LINES,
 )
+
 from core.pipeline_config import (
     ordered_steps, step_enabled_filter,
-    PipelineConfig, ALL_STEP_DEFS,
+    PipelineConfig, STEP_TO_SECTION,
+    step_display_name,
 )
+
 from helpers.platform_utils import is_macos, is_shorebird_available
 from helpers.shell import terminate_active_processes
 from helpers.build_report import send_build_report
@@ -74,6 +77,7 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
         self.step_vars: dict[str, ctk.BooleanVar] = {}
 
         self._section_switches: dict[str, list[ctk.CTkSwitch]] = {}
+        self._saved_section_states: dict[str, dict[str, bool]] = {}
         self._section_enable_vars: dict[str, ctk.BooleanVar] = {}
         self._step_start_times: dict[str, float] = {}
         self._pipeline_thread: Thread | None = None
@@ -226,9 +230,28 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
         var = self._section_enable_vars.get(section_key)
         if not var:
             return
-        state = "normal" if var.get() else "disabled"
+        enabled = var.get()
+        state = "normal" if enabled else "disabled"
+
+        section_step_keys = [
+            k for k, sec in STEP_TO_SECTION.items()
+            if sec == section_key and k in self.step_vars
+        ]
+
+        if not enabled:
+            self._saved_section_states[section_key] = {
+                k: self.step_vars[k].get() for k in section_step_keys
+            }
+            for k in section_step_keys:
+                self.step_vars[k].set(False)
+        else:
+            saved = self._saved_section_states.pop(section_key, {})
+            for k in section_step_keys:
+                self.step_vars[k].set(saved.get(k, True))
+
         for switch in self._section_switches.get(section_key, []):
             switch.configure(state=state)
+
         if section_key == "post":
             for w in self._post_sub_widgets:
                 try:
@@ -377,9 +400,7 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
             lbl.configure(text="0s", text_color=COLORS["accent"])
             pb.grid()
             pb.start()
-            step_def = ALL_STEP_DEFS.get(step_key)
-            step_name = step_def[1] if step_def else step_key
-            self.running_status_lbl.configure(text=f"Running: {step_name}...")
+            self.running_status_lbl.configure(text=f"Running: {step_display_name(step_key)}...")
         else:
             self._running_steps.discard(step_key)
             pb.stop()
@@ -436,9 +457,17 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
                 pass
 
     def _restore_widget_states(self):
-        """Re-apply section/shorebird toggle states after unlock."""
-        for key in self._section_enable_vars:
-            self._on_section_toggle(key)
+        """Re-apply section/shorebird toggle states after unlock (UI only, no var changes)."""
+        for section_key, var in self._section_enable_vars.items():
+            state = "normal" if var.get() else "disabled"
+            for switch in self._section_switches.get(section_key, []):
+                switch.configure(state=state)
+            if section_key == "post":
+                for w in self._post_sub_widgets:
+                    try:
+                        w.configure(state=state)
+                    except Exception:
+                        pass
         if self._shorebird_android:
             self._on_shorebird_toggle("android", self._shorebird_android)
         if self._shorebird_ios:
@@ -525,19 +554,15 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
 
         step_times: dict[str, float] = {}
 
-        def _step_name(key: str) -> str:
-            sd = ALL_STEP_DEFS.get(key)
-            return sd[1] if sd else key
-
         def on_start(step_key: str):
             step_times[step_key] = time.monotonic()
             self.ui_queue.put(("status", (step_key, "running")))
-            tee_tagged(f"\n▶ {_step_name(step_key)}\n", "step")
+            tee_tagged(f"\n▶ {step_display_name(step_key)}\n", "step")
 
         def on_done(ok: bool, step_key: str):
             elapsed = time.monotonic() - step_times.get(step_key, time.monotonic())
             self.ui_queue.put(("status", (step_key, "ok" if ok else "error")))
-            name = _step_name(step_key)
+            name = step_display_name(step_key)
             elapsed_str = fmt_elapsed(elapsed)
             step_results.append((name, ok, elapsed))
             tag = "ok" if ok else "err"
@@ -578,7 +603,7 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
             total_elapsed = fmt_elapsed(time.monotonic() - pipeline_start)
             try:
                 send_build_report(
-                    log_lines=list(log_buffer),
+                    log_lines=log_buffer,
                     step_results=step_results,
                     version=cfg.version,
                     build=cfg.build,

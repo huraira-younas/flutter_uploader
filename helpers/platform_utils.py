@@ -10,13 +10,15 @@ import os
 from core.constants import POWER_DELAY
 from helpers.types import LogFn
 
+_SYSTEM = platform.system()
+
 
 def is_macos() -> bool:
-    return platform.system() == "Darwin"
+    return _SYSTEM == "Darwin"
 
 
 def is_windows() -> bool:
-    return platform.system() == "Windows"
+    return _SYSTEM == "Windows"
 
 
 def is_shorebird_available() -> bool:
@@ -45,26 +47,24 @@ def _schedule_power_action(label: str, action: Callable[[], None], log: LogFn) -
 
 
 def _shutdown_cmd() -> list[str]:
-    system = platform.system()
-    if system == "Windows":
+    if _SYSTEM == "Windows":
         return ["shutdown", "/s", "/t", str(POWER_DELAY)]
-    if system == "Darwin":
+    if _SYSTEM == "Darwin":
         return ["osascript", "-e", 'tell application "System Events" to shut down']
     return ["systemctl", "poweroff"]
 
 
 def _sleep_cmd() -> list[str]:
-    system = platform.system()
-    if system == "Windows":
+    if _SYSTEM == "Windows":
         return ["rundll32.exe", "powrprof.dll,SetSuspendState", "0", "1", "0"]
-    if system == "Darwin":
+    if _SYSTEM == "Darwin":
         return ["pmset", "sleepnow"]
     return ["systemctl", "suspend"]
 
 
 def _run_power_cmd(cmd: list[str], log: LogFn | None = None, what: str = "command") -> None:
     kw: dict = {"capture_output": True, "check": True, "text": True, "timeout": 120}
-    if platform.system() == "Windows" and hasattr(subprocess, "CREATE_NO_WINDOW"):
+    if _SYSTEM == "Windows" and hasattr(subprocess, "CREATE_NO_WINDOW"):
         kw["creationflags"] = subprocess.CREATE_NO_WINDOW
     try:
         subprocess.run(cmd, **kw)
@@ -108,7 +108,7 @@ def _run_macos_sleep(log: LogFn) -> None:
 
 def shutdown_pc(log: LogFn) -> bool:
     """Schedule a shutdown after POWER_DELAY seconds."""
-    if platform.system() == "Windows":
+    if _SYSTEM == "Windows":
         try:
             _run_power_cmd(_shutdown_cmd(), log=log, what="Shutdown")
             log(f"Shutdown scheduled in {POWER_DELAY} seconds.\n")
@@ -125,7 +125,7 @@ def shutdown_pc(log: LogFn) -> bool:
 
 def sleep_pc(log: LogFn) -> bool:
     """Schedule sleep after POWER_DELAY seconds."""
-    if platform.system() == "Darwin":
+    if _SYSTEM == "Darwin":
         return _schedule_power_action("Sleep", lambda: _run_macos_sleep(log), log)
     return _schedule_power_action(
         "Sleep",
@@ -140,9 +140,9 @@ def open_folder(path: Path, log: LogFn) -> bool:
         log(f"Folder not found: {path}\n")
         return False
     try:
-        if platform.system() == "Windows":
+        if _SYSTEM == "Windows":
             os.startfile(path)
-        elif platform.system() == "Darwin":
+        elif _SYSTEM == "Darwin":
             subprocess.run(["open", path], check=True)
         else:
             subprocess.run(["xdg-open", path], check=True)

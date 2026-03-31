@@ -2,23 +2,18 @@
 
 from __future__ import annotations
 
-import webbrowser
 from pathlib import Path
 
 import customtkinter as ctk
-from bs4 import BeautifulSoup, NavigableString, Tag
 
 from core.constants import (
     CLI_REFERENCE_PATH,
-    CODE_BG,
-    CODE_BORDER,
-    COLORS,
     ENVIRONMENT_PATH,
-    HEADING_COLORS,
-    README_PATH,
     UPLOADER_DIR,
+    README_PATH,
 )
-from gui.theme import RADIUS, PAD
+
+from gui.theme import CODE_BG, CODE_BORDER, COLORS, HEADING_COLORS, RADIUS, PAD
 from gui.widgets import card, section_label
 
 _MD_EXTENSIONS = (
@@ -37,11 +32,13 @@ def _markdown_to_html_fragment(md: str) -> str:
     return markdown.markdown(md, extensions=list(_MD_EXTENSIONS))
 
 
-def _inline_plain(el: Tag) -> str:
+def _inline_plain(el) -> str:
     """Flatten inline tags to readable plain text (links show URL)."""
+    from bs4 import NavigableString
+
     parts: list[str] = []
 
-    def walk(node: Tag | NavigableString) -> None:
+    def walk(node) -> None:
         if isinstance(node, NavigableString):
             parts.append(str(node))
             return
@@ -214,6 +211,8 @@ class ReadMePanel(ctk.CTkFrame):
             return
 
         try:
+            from bs4 import BeautifulSoup, Tag as BsTag, NavigableString as BsStr
+
             html = _markdown_to_html_fragment(md)
             soup = BeautifulSoup(f"<div id='md'>{html}</div>", "html.parser")
             root = soup.find("div", id="md")
@@ -224,9 +223,9 @@ class ReadMePanel(ctk.CTkFrame):
 
             row = 0
             for child in root.children:
-                if isinstance(child, NavigableString) and not str(child).strip():
+                if isinstance(child, BsStr) and not str(child).strip():
                     continue
-                if isinstance(child, Tag):
+                if isinstance(child, BsTag):
                     row = self._render_tag(scroll, child, row)
         except Exception as exc:
             self._show_text_in_card(
@@ -236,7 +235,9 @@ class ReadMePanel(ctk.CTkFrame):
                 "Install: pip install markdown beautifulsoup4",
             )
 
-    def _render_tag(self, scroll: ctk.CTkScrollableFrame, el: Tag, row: int) -> int:
+    def _render_tag(self, scroll: ctk.CTkScrollableFrame, el, row: int) -> int:
+        from bs4 import Tag
+
         name = el.name
         if name in ("h1", "h2", "h3", "h4"):
             return self._heading(scroll, el, row)
@@ -259,7 +260,6 @@ class ReadMePanel(ctk.CTkFrame):
                 if isinstance(ch, Tag):
                     row = self._render_tag(scroll, ch, row)
             return row
-        # Fallback: show text
         t = el.get_text("\n", strip=True)
         if t:
             self._body_label(scroll, row, t)
@@ -381,7 +381,9 @@ class ReadMePanel(ctk.CTkFrame):
                 row = self._list_block(scroll, nested, row, ordered=(nested.name == "ol"))
         return row
 
-    def _blockquote(self, scroll: ctk.CTkScrollableFrame, el: Tag, row: int) -> int:
+    def _blockquote(self, scroll: ctk.CTkScrollableFrame, el, row: int) -> int:
+        from bs4 import Tag
+
         wrap = ctk.CTkFrame(
             scroll,
             fg_color=CODE_BG,
@@ -414,8 +416,10 @@ class ReadMePanel(ctk.CTkFrame):
         return row + 1
 
 
-def _li_main_text(li: Tag) -> str:
+def _li_main_text(li) -> str:
     """Text in <li> excluding nested lists."""
+    from bs4 import Tag
+
     parts: list[str] = []
     for ch in li.children:
         if isinstance(ch, Tag) and ch.name in ("ul", "ol"):

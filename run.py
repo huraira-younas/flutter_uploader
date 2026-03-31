@@ -141,7 +141,7 @@ def _run_cli(args: argparse.Namespace) -> None:
     from core.pipeline_config import (
         PipelineConfig, ordered_steps, step_enabled_filter,
         validate_step_keys, validate_build_mode, validate_power_mode,
-        ALL_STEP_DEFS,
+        step_display_name,
     )
     from helpers.platform_utils import is_macos
     from helpers.build_report import send_build_report
@@ -201,17 +201,13 @@ def _run_cli(args: argparse.Namespace) -> None:
         log_buffer.append(msg)
         print(msg, end="", flush=True)
 
-    def _step_name(key: str) -> str:
-        sd = ALL_STEP_DEFS.get(key)
-        return sd[1] if sd else key
-
     def on_start(step_key: str):
         step_times[step_key] = time.monotonic()
-        log(f"\n▶ {_step_name(step_key)}\n")
+        log(f"\n▶ {step_display_name(step_key)}\n")
 
     def on_done(ok: bool, step_key: str):
         elapsed = time.monotonic() - step_times.get(step_key, time.monotonic())
-        name = _step_name(step_key)
+        name = step_display_name(step_key)
         elapsed_str = fmt_elapsed(elapsed)
         step_results.append((name, ok, elapsed))
         mark = "✓" if ok else "✗"
@@ -255,7 +251,7 @@ def _run_cli(args: argparse.Namespace) -> None:
         total_elapsed = fmt_elapsed(time.monotonic() - pipeline_start)
         try:
             send_build_report(
-                log_lines=list(log_buffer),
+                log_lines=log_buffer,
                 step_results=step_results,
                 version=cfg.version,
                 build=cfg.build,

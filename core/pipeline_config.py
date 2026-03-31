@@ -142,6 +142,12 @@ def validate_power_mode(mode: str) -> str:
     return normalized.capitalize()
 
 
+def step_display_name(key: str) -> str:
+    """Human-readable label for a step key."""
+    sd = ALL_STEP_DEFS.get(key)
+    return sd[1] if sd else key
+
+
 def list_steps() -> list[tuple[str, str, str | None]]:
     return [
         (s[0], s[1], STEP_TO_SECTION.get(s[0]))
