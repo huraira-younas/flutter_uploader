@@ -13,7 +13,7 @@ from core.constants import (
     README_PATH,
 )
 
-from gui.theme import CODE_BG, CODE_BORDER, COLORS, HEADING_COLORS, RADIUS, PAD
+from gui.theme import COLORS, HEADING_COLORS, RADIUS, PAD
 from gui.widgets import card, section_label
 
 _MD_EXTENSIONS = (
@@ -118,24 +118,21 @@ class ReadMePanel(ctk.CTkFrame):
             command=self._on_doc_segment,
             font=self._fonts["body_sm"],
             height=26,
-            corner_radius=RADIUS["input"],
+            corner_radius=6,
             selected_color=COLORS["accent"],
             selected_hover_color=COLORS["accent_hover"],
-            unselected_color=COLORS["card_bg"],
-            unselected_hover_color=COLORS["hover"],
-            text_color=COLORS["text"],
         )
         self._seg.grid(row=0, column=0, sticky="ew", pady=(0, 10))
 
-        stack_host = ctk.CTkFrame(self, fg_color=COLORS["bg"])
+        stack_host = ctk.CTkFrame(self, fg_color="transparent")
         stack_host.grid(row=1, column=0, sticky="nsew")
         stack_host.grid_columnconfigure(0, weight=1)
         stack_host.grid_rowconfigure(0, weight=1)
 
         self._tab_frames = {}
         for title, _path in self._DOC_TABS:
-            fr = ctk.CTkFrame(stack_host, fg_color=COLORS["bg"])
-            fr.place(relx=0, rely=0, relwidth=1, relheight=1)
+            fr = ctk.CTkFrame(stack_host, fg_color="transparent")
+            fr.grid(row=0, column=0, sticky="nsew")
             fr.grid_columnconfigure(0, weight=1)
             fr.grid_rowconfigure(0, weight=1)
             self._tab_frames[title] = fr
@@ -153,7 +150,7 @@ class ReadMePanel(ctk.CTkFrame):
                 f"  pip install -r {UPLOADER_DIR / 'requirements.txt'}"
             )
             for title, _ in self._DOC_TABS:
-                self._show_text_in_card(self._tab_frames[title], "Notice", msg)
+                self._show_error_in_tab(self._tab_frames[title], msg)
             return
 
         self._doc_paths = {title: path for title, path in self._DOC_TABS}
@@ -161,53 +158,36 @@ class ReadMePanel(ctk.CTkFrame):
         self._mount_doc_tab(self._tab_frames[first_title], first_path, first_title)
         self._mounted_doc_tabs.add(first_title)
 
-    def _doc_card_shell(self, parent: ctk.CTkFrame, section_title: str) -> tuple[ctk.CTkFrame, ctk.CTkScrollableFrame]:
-        """Same chrome as ``cards.py``: bordered card + section header + scroll body."""
-        parent.grid_columnconfigure(0, weight=1)
-        parent.grid_rowconfigure(0, weight=1)
-        shell = ctk.CTkFrame(parent, fg_color="transparent")
-        shell.grid(row=0, column=0, sticky="nsew")
-        shell.grid_columnconfigure(0, weight=1)
-        shell.grid_rowconfigure(0, weight=1)
-
-        doc_card = card(shell, row=0, column=0, sticky="nsew", pady=(0, 12))
-        doc_card.grid_columnconfigure(0, weight=1)
-        doc_card.grid_rowconfigure(1, weight=1)
-
-        header = ctk.CTkFrame(doc_card, fg_color="transparent")
-        header.grid(row=0, column=0, sticky="ew", padx=PAD["lg"], pady=(PAD["md"], 5))
-        section_label(header, section_title, self._fonts["section"]).grid(row=0, column=0, sticky="w")
-
+    def _tab_scroll(self, parent: ctk.CTkFrame) -> ctk.CTkScrollableFrame:
+        """Create a tab-level scrollable frame (same pattern as Config tab)."""
         scroll = ctk.CTkScrollableFrame(
-            doc_card,
-            fg_color="transparent",
+            parent, fg_color="transparent",
             scrollbar_button_color=COLORS["card_border"],
             scrollbar_button_hover_color=COLORS["hover"],
         )
-        scroll.grid(row=1, column=0, sticky="nsew", padx=0, pady=(0, PAD["md"]))
+        scroll.grid(row=0, column=0, sticky="nsew")
         scroll.grid_columnconfigure(0, weight=1)
-        return doc_card, scroll
+        return scroll
 
-    def _show_text_in_card(self, parent: ctk.CTkFrame, section_title: str, message: str) -> None:
-        _, shell = self._doc_card_shell(parent, section_title)
+    def _show_error_in_tab(self, parent: ctk.CTkFrame, message: str) -> None:
+        scroll = self._tab_scroll(parent)
+        c = card(scroll, row=0, column=0, sticky="ew", pady=(0, 12))
+        c.grid_columnconfigure(0, weight=1)
         ctk.CTkLabel(
-            shell,
-            text=message,
+            c, text=message,
             font=self._fonts["body"],
             text_color=COLORS["error"],
-            justify="left",
-            anchor="nw",
-            wraplength=720,
-        ).grid(row=0, column=0, sticky="ew", padx=PAD["lg"], pady=(0, PAD["md"]))
+            justify="left", anchor="nw", wraplength=720,
+        ).grid(row=0, column=0, sticky="ew", padx=PAD["lg"], pady=PAD["lg"])
 
     def _mount_doc_tab(self, frame: ctk.CTkFrame, path: Path, tab_title: str) -> None:
         if not path.is_file():
-            self._show_text_in_card(frame, tab_title, f"{path.name} not found.\nExpected:\n{path}")
+            self._show_error_in_tab(frame, f"{path.name} not found.\nExpected:\n{path}")
             return
         try:
             md = path.read_text(encoding="utf-8")
         except OSError as exc:
-            self._show_text_in_card(frame, tab_title, f"Could not read {path.name}:\n{exc}")
+            self._show_error_in_tab(frame, f"Could not read {path.name}:\n{exc}")
             return
 
         try:
@@ -219,23 +199,28 @@ class ReadMePanel(ctk.CTkFrame):
             if root is None:
                 raise RuntimeError("parse failed")
 
-            _, scroll = self._doc_card_shell(frame, tab_title)
+            scroll = self._tab_scroll(frame)
+            doc_card = card(scroll, row=0, column=0, sticky="ew", pady=(0, 12))
+            doc_card.grid_columnconfigure(0, weight=1)
 
-            row = 0
+            section_label(doc_card, tab_title, self._fonts["section"]).grid(
+                row=0, column=0, sticky="w", padx=PAD["lg"], pady=(PAD["md"], 5),
+            )
+
+            row = 1
             for child in root.children:
                 if isinstance(child, BsStr) and not str(child).strip():
                     continue
                 if isinstance(child, BsTag):
-                    row = self._render_tag(scroll, child, row)
+                    row = self._render_tag(doc_card, child, row)
         except Exception as exc:
-            self._show_text_in_card(
+            self._show_error_in_tab(
                 frame,
-                tab_title,
                 f"Could not render {path.name}:\n{exc}\n\n"
                 "Install: pip install markdown beautifulsoup4",
             )
 
-    def _render_tag(self, scroll: ctk.CTkScrollableFrame, el, row: int) -> int:
+    def _render_tag(self, scroll: ctk.CTkFrame, el, row: int) -> int:
         from bs4 import Tag
 
         name = el.name
@@ -266,7 +251,7 @@ class ReadMePanel(ctk.CTkFrame):
             return row + 1
         return row
 
-    def _heading(self, scroll: ctk.CTkScrollableFrame, el: Tag, row: int) -> int:
+    def _heading(self, scroll: ctk.CTkFrame, el: Tag, row: int) -> int:
         level = int(el.name[1])
         if level == 1:
             font = self._fonts["readme_h1"]
@@ -290,14 +275,14 @@ class ReadMePanel(ctk.CTkFrame):
             row += 1
         return row
 
-    def _paragraph(self, scroll: ctk.CTkScrollableFrame, el: Tag, row: int) -> int:
+    def _paragraph(self, scroll: ctk.CTkFrame, el: Tag, row: int) -> int:
         text = _inline_plain(el)
         if not text:
             return row
         self._body_label(scroll, row, text)
         return row + 1
 
-    def _body_label(self, scroll: ctk.CTkScrollableFrame, row: int, text: str) -> None:
+    def _body_label(self, scroll: ctk.CTkFrame, row: int, text: str) -> None:
         ctk.CTkLabel(
             scroll,
             text=text,
@@ -308,12 +293,12 @@ class ReadMePanel(ctk.CTkFrame):
             wraplength=_WRAP,
         ).grid(row=row, column=0, sticky="ew", padx=PAD["lg"], pady=(2, 6))
 
-    def _pre(self, scroll: ctk.CTkScrollableFrame, el: Tag, row: int) -> int:
+    def _pre(self, scroll: ctk.CTkFrame, el: Tag, row: int) -> int:
         code_el = el.find("code")
         raw = code_el.get_text() if code_el else el.get_text()
         box = ctk.CTkFrame(
-            scroll, fg_color=CODE_BG, corner_radius=RADIUS["input"],
-            border_width=1, border_color=CODE_BORDER,
+            scroll, fg_color=COLORS["code_bg"], corner_radius=RADIUS["input"],
+            border_width=1, border_color=COLORS["code_border"],
         )
         box.grid(row=row, column=0, sticky="ew", padx=PAD["lg"], pady=(4, 8))
         box.grid_columnconfigure(0, weight=1)
@@ -328,10 +313,10 @@ class ReadMePanel(ctk.CTkFrame):
         ).grid(row=0, column=0, sticky="ew", padx=12, pady=10)
         return row + 1
 
-    def _table(self, scroll: ctk.CTkScrollableFrame, el: Tag, row: int) -> int:
+    def _table(self, scroll: ctk.CTkFrame, el: Tag, row: int) -> int:
         tbl = ctk.CTkFrame(
-            scroll, fg_color=CODE_BG, corner_radius=RADIUS["input"],
-            border_width=1, border_color=CODE_BORDER,
+            scroll, fg_color=COLORS["code_bg"], corner_radius=RADIUS["input"],
+            border_width=1, border_color=COLORS["code_border"],
         )
         tbl.grid(row=row, column=0, sticky="ew", padx=PAD["lg"], pady=(4, 10))
         r = 0
@@ -360,7 +345,7 @@ class ReadMePanel(ctk.CTkFrame):
             r += 1
         return row + 1
 
-    def _list_block(self, scroll: ctk.CTkScrollableFrame, el: Tag, row: int, *, ordered: bool) -> int:
+    def _list_block(self, scroll: ctk.CTkFrame, el: Tag, row: int, *, ordered: bool) -> int:
         idx = 1
         for li in el.find_all("li", recursive=False):
             bullet = f"{idx}. " if ordered else "•  "
@@ -386,7 +371,7 @@ class ReadMePanel(ctk.CTkFrame):
 
         wrap = ctk.CTkFrame(
             scroll,
-            fg_color=CODE_BG,
+            fg_color=COLORS["code_bg"],
             corner_radius=RADIUS["input"],
             border_width=1,
             border_color=COLORS["accent"],

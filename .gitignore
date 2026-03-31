@@ -19,6 +19,9 @@ private_keys/
 logs/
 outputs/
 
+# ── GUI preferences (local user settings) ────────────────────────────────────
+.gui_prefs.json
+
 # ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]

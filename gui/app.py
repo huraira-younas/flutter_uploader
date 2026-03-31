@@ -32,6 +32,7 @@ from helpers.version import write_version
 from gui.theme import COLORS, RADIUS, PAD
 from gui.cards import CardBuilderMixin
 from gui.console import ConsolePanel
+from gui.settings import SettingsPanel, load_saved_theme
 from gui.readme import ReadMePanel
 from core.run import run_selected
 import customtkinter as ctk
@@ -39,6 +40,11 @@ import customtkinter as ctk
 
 class BuildApp(CardBuilderMixin, ctk.CTk):
     def __init__(self):
+        saved = load_saved_theme()
+        if saved:
+            from gui.theme import set_theme, available_themes
+            if saved in available_themes():
+                set_theme(saved)
         super().__init__(fg_color=COLORS["bg"])
         self.protocol("WM_DELETE_WINDOW", self._on_closing)
 
@@ -118,7 +124,7 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
         tab_bar.grid(row=1, column=0, sticky="ew", padx=PAD["lg"])
 
         self._tab_selector = ctk.CTkSegmentedButton(
-            tab_bar, values=["Config", "Console", "ReadMe"],
+            tab_bar, values=["Config", "Console", "ReadMe", "Settings"],
             command=self._switch_tab, font=self._fonts["body_sm"],
             selected_color=COLORS["accent"], selected_hover_color=COLORS["accent_hover"],
             height=26, corner_radius=6,
@@ -132,16 +138,17 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
         content.grid_rowconfigure(0, weight=1)
 
         self._tab_frames: dict[str, ctk.CTkFrame] = {}
-        for tab_name in ("Config", "Console", "ReadMe"):
+        for tab_name in ("Config", "Console", "ReadMe", "Settings"):
             frame = ctk.CTkFrame(content, fg_color="transparent")
             frame.grid(row=0, column=0, sticky="nsew")
             frame.grid_columnconfigure(0, weight=1)
             frame.grid_rowconfigure(0, weight=1)
             self._tab_frames[tab_name] = frame
 
-        self._config_frame = self._tab_frames["Config"]
+        self._settings_frame = self._tab_frames["Settings"]
         self._console_frame = self._tab_frames["Console"]
         self._readme_frame = self._tab_frames["ReadMe"]
+        self._config_frame = self._tab_frames["Config"]
 
         self.config_scroll = ctk.CTkScrollableFrame(
             self._config_frame, fg_color="transparent",
@@ -180,6 +187,9 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
 
         self._readme = ReadMePanel(self._readme_frame, self._fonts)
         self._readme.grid(row=0, column=0, sticky="nsew")
+
+        self._settings = SettingsPanel(self._settings_frame, self._fonts, app=self)
+        self._settings.grid(row=0, column=0, sticky="nsew")
 
         self._config_frame.tkraise()
 
