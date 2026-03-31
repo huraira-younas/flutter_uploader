@@ -94,8 +94,10 @@ def ordered_steps(cfg: PipelineConfig, *, include_ios: bool = False) -> list[Ste
 
 
 def step_enabled_filter(cfg: PipelineConfig) -> Callable[[str], bool]:
+    appstore_allowed = cfg.ios_build_mode != "patch"
+
     if cfg.enabled_steps is None:
-        return lambda _: True
+        return lambda key: appstore_allowed or key != "appstore_upload"
 
     selected = cfg.enabled_steps
     section_active = {
@@ -106,6 +108,8 @@ def step_enabled_filter(cfg: PipelineConfig) -> Callable[[str], bool]:
     }
 
     def _check(key: str) -> bool:
+        if not appstore_allowed and key == "appstore_upload":
+            return False
         if key not in selected:
             return False
         section = STEP_TO_SECTION.get(key)

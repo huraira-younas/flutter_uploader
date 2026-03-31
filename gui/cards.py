@@ -148,6 +148,7 @@ class CardBuilderMixin:
                 variable=mode_var, font=self._fonts["body_sm"],
                 selected_color=COLORS["accent"], selected_hover_color=COLORS["accent_hover"],
                 height=26, corner_radius=6,
+                command=lambda _=None, sk=section_key: self._on_shorebird_mode_changed(sk),
             )
             mode_seg.grid(row=0, column=col, sticky="e", padx=(0, PAD["sm"]))
             self._sb_mode_widgets[section_key] = mode_seg
@@ -204,6 +205,7 @@ class CardBuilderMixin:
             text=f"{label}  —  {desc}", font=self._fonts["body"], variable=var,
         )
         switch.grid(row=0, column=0, sticky="w")
+        self.step_switches[key] = switch
         self._section_switches.setdefault(section_key, []).append(switch)
 
         status_col = 1

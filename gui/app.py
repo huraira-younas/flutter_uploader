@@ -70,6 +70,7 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
 
         self.step_progress_bars: dict[str, ctk.CTkProgressBar] = {}
         self.step_status_labels: dict[str, ctk.CTkLabel] = {}
+        self.step_switches: dict[str, ctk.CTkSwitch] = {}
         self.step_vars: dict[str, ctk.BooleanVar] = {}
 
         self._section_switches: dict[str, list[ctk.CTkSwitch]] = {}
@@ -95,6 +96,7 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
         }
 
         self._build_ui()
+        self._apply_ios_mode_rules()
         self._start_queue_polling()
 
     # ── UI construction ───────────────────────────────────────────────────────
@@ -241,6 +243,38 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
         seg = self._sb_mode_widgets.get(section_key)
         if seg:
             seg.configure(state="normal" if var.get() else "disabled")
+        if section_key == "ios":
+            self._apply_ios_mode_rules()
+
+    def _on_shorebird_mode_changed(self, section_key: str) -> None:
+        if section_key == "ios":
+            self._apply_ios_mode_rules()
+
+    def _apply_ios_mode_rules(self) -> None:
+        """Enforce UI-only rules derived from current iOS build mode selection."""
+        if not self._show_ios:
+            return
+
+        appstore_sw = self.step_switches.get("appstore_upload")
+        appstore_var = self.step_vars.get("appstore_upload")
+        if not appstore_sw or not appstore_var:
+            return
+
+        shorebird_on = bool(self._shorebird_ios and self._shorebird_ios.get())
+        ios_mode = (self._ios_sb_mode.get() if self._ios_sb_mode else "Release").lower()
+        ios_enabled = bool(self._ios_enabled and self._ios_enabled.get())
+
+        patch_mode = shorebird_on and ios_mode == "patch"
+        if patch_mode:
+            appstore_var.set(False)
+            appstore_sw.configure(state="disabled")
+            return
+
+        if self.is_busy:
+            appstore_sw.configure(state="disabled")
+            return
+
+        appstore_sw.configure(state="normal" if ios_enabled else "disabled")
 
     @staticmethod
     def _resolve_build_mode(
@@ -409,6 +443,7 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
             self._on_shorebird_toggle("android", self._shorebird_android)
         if self._shorebird_ios:
             self._on_shorebird_toggle("ios", self._shorebird_ios)
+        self._apply_ios_mode_rules()
 
     # ── Step collection (delegates to shared pipeline_config) ────────────────
 

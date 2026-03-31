@@ -172,16 +172,42 @@ def run_shorebird_release_ios(log: LogFn = _log_noop, stop_check: StopCheckFn | 
 
 
 def run_shorebird_patch_android(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
+    return run_shorebird_patch_android_for_release("", log=log, stop_check=stop_check)
+
+
+def run_shorebird_patch_android_for_release(
+    release_version: str,
+    log: LogFn = _log_noop,
+    stop_check: StopCheckFn | None = None,
+) -> bool:
+    cmd = ["shorebird", "patch", "android"]
+    if release_version:
+        log(f">> Auto-target Shorebird release: {release_version}\n")
+        cmd += ["--release-version", release_version]
     return _run_project_cmd(
-        ["shorebird", "patch", "android"], log,
-        header="\n>> shorebird patch android\n", stop_check=stop_check,
+        cmd, log,
+        header="\n>> shorebird patch android\n",
+        stop_check=stop_check,
     )
 
 
 def run_shorebird_patch_ios(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
+    return run_shorebird_patch_ios_for_release("", log=log, stop_check=stop_check)
+
+
+def run_shorebird_patch_ios_for_release(
+    release_version: str,
+    log: LogFn = _log_noop,
+    stop_check: StopCheckFn | None = None,
+) -> bool:
+    cmd = ["shorebird", "patch", "ios"]
+    if release_version:
+        log(f">> Auto-target Shorebird release: {release_version}\n")
+        cmd += ["--release-version", release_version]
     return _run_project_cmd(
-        ["shorebird", "patch", "ios"], log,
-        header="\n>> shorebird patch ios\n", stop_check=stop_check,
+        cmd, log,
+        header="\n>> shorebird patch ios\n",
+        stop_check=stop_check,
     )
 
 
@@ -229,10 +255,26 @@ def _build_runners(
     def with_stop(fn: Callable) -> Callable[[LogFn], bool]:
         return lambda log: fn(log, stop_check=stop_check)
 
+    release_version = f"{version}+{build}".strip("+")
     pub_fn = run_flutter_pub_upgrade if pub_upgrade else run_flutter_pub_get
     apk_builder = _APK_BUILDERS.get(android_build_mode, run_build_apk)
     ipa_builder = _IPA_BUILDERS.get(ios_build_mode, run_build_ipa)
     power_fn = sleep_pc if power_mode == "Sleep" else shutdown_pc
+
+    if android_build_mode == "patch":
+        apk_builder = lambda log, stop_check=None: run_shorebird_patch_android_for_release(
+            release_version, log=log, stop_check=stop_check,
+        )
+    if ios_build_mode == "patch":
+        ipa_builder = lambda log, stop_check=None: run_shorebird_patch_ios_for_release(
+            release_version, log=log, stop_check=stop_check,
+        )
+
+    def _appstore_runner(log: LogFn) -> bool:
+        if ios_build_mode == "patch":
+            log("Skipping App Store upload: Shorebird patch mode selected.\n")
+            return True
+        return run_appstore_upload(version, build, log, stop_check=stop_check)
 
     def _build_apk_and_collect(log: LogFn) -> bool:
         ok = apk_builder(log, stop_check=stop_check)
@@ -248,7 +290,7 @@ def _build_runners(
 
     return {
         "drive_upload":    lambda l: run_drive_upload(recipients, version, build, l, stop_check=stop_check),
-        "appstore_upload": lambda l: run_appstore_upload(version, build, l, stop_check=stop_check),
+        "appstore_upload": _appstore_runner,
         "git_commit_rel":  lambda l: run_git_commit_release(version, build, l),
         "git_commit_pre":  lambda l: run_git_commit_pre(commit_message, l),
         "open_folders":    lambda l: run_open_outputs(l),
