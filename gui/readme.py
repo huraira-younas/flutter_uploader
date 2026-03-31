@@ -1,7 +1,12 @@
-"""ReadMe panel — Markdown via Python-Markdown, layout with CustomTkinter (crisp; no Tkhtml)."""
+"""ReadMe panel — Markdown via Python-Markdown, layout with CustomTkinter.
+
+Supports rich inline styling: bold, italic, inline code, and clickable links.
+"""
 
 from __future__ import annotations
 
+import webbrowser
+from dataclasses import dataclass
 from pathlib import Path
 
 import customtkinter as ctk
@@ -32,37 +37,79 @@ def _markdown_to_html_fragment(md: str) -> str:
     return markdown.markdown(md, extensions=list(_MD_EXTENSIONS))
 
 
+# ── Inline span model ─────────────────────────────────────────────────────────
+
+@dataclass(slots=True)
+class _Span:
+    text: str
+    bold: bool = False
+    italic: bool = False
+    code: bool = False
+    href: str | None = None
+
+
+_BLOCK_TAGS = frozenset({"ul", "ol", "table", "pre", "blockquote", "div", "hr",
+                         "h1", "h2", "h3", "h4", "h5", "h6"})
+
+
+def _collect_spans(node, *, bold: bool = False, italic: bool = False) -> list[_Span]:
+    """Recursively walk inline HTML nodes and produce a flat list of styled spans."""
+    from bs4 import NavigableString, Tag
+
+    spans: list[_Span] = []
+    for child in node.children:
+        if isinstance(child, NavigableString):
+            text = str(child)
+            if text:
+                spans.append(_Span(text=text, bold=bold, italic=italic))
+        elif isinstance(child, Tag):
+            if child.name in _BLOCK_TAGS:
+                continue
+            if child.name == "br":
+                spans.append(_Span(text="\n"))
+            elif child.name in ("strong", "b"):
+                spans.extend(_collect_spans(child, bold=True, italic=italic))
+            elif child.name in ("em", "i"):
+                spans.extend(_collect_spans(child, bold=bold, italic=True))
+            elif child.name == "code":
+                spans.append(_Span(text=child.get_text(), code=True))
+            elif child.name == "a":
+                href = (child.get("href") or "").strip()
+                spans.append(_Span(text=child.get_text(), href=href or None, bold=bold, italic=italic))
+            else:
+                spans.extend(_collect_spans(child, bold=bold, italic=italic))
+    return spans
+
+
+def _coalesce_spans(spans: list[_Span]) -> list[_Span]:
+    """Merge adjacent spans with identical styling to reduce widget count."""
+    if not spans:
+        return []
+    merged: list[_Span] = [_Span(text=spans[0].text, bold=spans[0].bold, italic=spans[0].italic,
+                                   code=spans[0].code, href=spans[0].href)]
+    for s in spans[1:]:
+        prev = merged[-1]
+        if (s.bold == prev.bold and s.italic == prev.italic
+                and s.code == prev.code and s.href == prev.href):
+            prev.text += s.text
+        else:
+            merged.append(_Span(text=s.text, bold=s.bold, italic=s.italic,
+                                 code=s.code, href=s.href))
+    return merged
+
+
+def _spans_plain(spans: list[_Span]) -> str:
+    """Fallback: flatten spans back to plain text."""
+    return "".join(s.text for s in spans).strip()
+
+
+# ── Inline plain (legacy, kept for _li_main_text / blockquote fallback) ───────
+
 def _inline_plain(el) -> str:
-    """Flatten inline tags to readable plain text (links show URL)."""
-    from bs4 import NavigableString
+    return _spans_plain(_collect_spans(el))
 
-    parts: list[str] = []
 
-    def walk(node) -> None:
-        if isinstance(node, NavigableString):
-            parts.append(str(node))
-            return
-        if node.name == "a":
-            href = (node.get("href") or "").strip()
-            label = node.get_text()
-            parts.append(f"{label} ({href})" if href else label)
-            return
-        if node.name == "code":
-            parts.append(node.get_text())
-            return
-        if node.name in ("strong", "b", "em", "span"):
-            parts.append(node.get_text())
-            return
-        if node.name == "br":
-            parts.append("\n")
-            return
-        for ch in node.children:
-            walk(ch)  # type: ignore[arg-type]
-
-    for ch in el.children:
-        walk(ch)
-    return "".join(parts).strip()
-
+# ── Import check ──────────────────────────────────────────────────────────────
 
 def _renderer_import_error() -> str | None:
     try:
@@ -76,8 +123,10 @@ def _renderer_import_error() -> str | None:
     return None
 
 
+# ── Panel ─────────────────────────────────────────────────────────────────────
+
 class ReadMePanel(ctk.CTkFrame):
-    """Tabbed docs: segmented control + stacked body frames (``lift``), not CTkTabview — avoids slow remap."""
+    """Tabbed docs: segmented control + stacked body frames (``lift``)."""
 
     _DOC_TABS: tuple[tuple[str, Path], ...] = (
         ("README", README_PATH),
@@ -86,7 +135,6 @@ class ReadMePanel(ctk.CTkFrame):
     )
 
     def __init__(self, parent: ctk.CTkFrame, fonts: dict):
-        # Match main window / Config tab (COLORS["bg"]), not card_bg.
         super().__init__(parent, fg_color=COLORS["bg"])
         self._mounted_doc_tabs: set[str] = set()
         self._tab_frames: dict[str, ctk.CTkFrame] = {}
@@ -97,8 +145,112 @@ class ReadMePanel(ctk.CTkFrame):
         self._fonts = fonts
         self._build()
 
+    # ── Font resolver for inline spans ─────────────────────────────────────
+
+    def _span_font(self, span: _Span) -> ctk.CTkFont:
+        if span.code:
+            return self._fonts["inline_code"]
+        if span.bold and span.italic:
+            return self._fonts["body_bold_italic"]
+        if span.bold:
+            return self._fonts["body_bold"]
+        if span.italic:
+            return self._fonts["body_italic"]
+        return self._fonts["body"]
+
+    @staticmethod
+    def _span_color(span: _Span) -> str:
+        if span.href:
+            return COLORS["accent"]
+        if span.code:
+            return COLORS["cmd"]
+        return COLORS["text"]
+
+    # ── Inline renderer ────────────────────────────────────────────────────
+
+    def _render_inline(
+        self, parent: ctk.CTkFrame, element, row: int, *,
+        padx: int | tuple[int, int] = 0,
+        pady: tuple[int, int] = (2, 6),
+        wraplength: int = _WRAP,
+        prefix: str = "",
+    ) -> int:
+        """Render inline HTML nodes as styled labels in a flow container."""
+        spans = _coalesce_spans(_collect_spans(element))
+        if not spans and not prefix:
+            return row
+
+        has_rich = any(s.bold or s.italic or s.code or s.href for s in spans)
+
+        if not has_rich and not prefix:
+            text = _spans_plain(spans)
+            if not text:
+                return row
+            ctk.CTkLabel(
+                parent, text=text, font=self._fonts["body"],
+                text_color=COLORS["text"], anchor="nw", justify="left",
+                wraplength=wraplength,
+            ).grid(row=row, column=0, sticky="ew", padx=padx, pady=pady)
+            return row + 1
+
+        if not has_rich and prefix:
+            text = prefix + _spans_plain(spans)
+            ctk.CTkLabel(
+                parent, text=text, font=self._fonts["body"],
+                text_color=COLORS["text"], anchor="nw", justify="left",
+                wraplength=wraplength,
+            ).grid(row=row, column=0, sticky="ew", padx=padx, pady=pady)
+            return row + 1
+
+        container = ctk.CTkFrame(parent, fg_color="transparent")
+        container.grid(row=row, column=0, sticky="ew", padx=padx, pady=pady)
+
+        col = 0
+        if prefix:
+            ctk.CTkLabel(
+                container, text=prefix, font=self._fonts["body"],
+                text_color=COLORS["text"], anchor="w",
+            ).grid(row=0, column=col, sticky="w")
+            col += 1
+
+        for span in spans:
+            if not span.text:
+                continue
+
+            lines = span.text.split("\n")
+            for li_idx, line in enumerate(lines):
+                if li_idx > 0:
+                    col = 0
+                if not line:
+                    continue
+
+                font = self._span_font(span)
+                color = self._span_color(span)
+
+                lbl = ctk.CTkLabel(
+                    container, text=line, font=font,
+                    text_color=color, anchor="w",
+                )
+
+                if span.code:
+                    lbl.configure(
+                        fg_color=COLORS["code_bg"],
+                        corner_radius=4,
+                    )
+
+                if span.href:
+                    lbl.configure(cursor="hand2")
+                    url = span.href
+                    lbl.bind("<Button-1>", lambda _e, u=url: webbrowser.open(u))
+
+                lbl.grid(row=0, column=col, sticky="w")
+                col += 1
+
+        return row + 1
+
+    # ── Tab infrastructure ─────────────────────────────────────────────────
+
     def _on_doc_segment(self, name: str) -> None:
-        """Show stacked tab body (``lift`` only — avoids CTkTabview ``grid_forget`` remap cost)."""
         fr = self._tab_frames.get(name)
         if fr is not None:
             fr.lift()
@@ -208,38 +360,45 @@ class ReadMePanel(ctk.CTkFrame):
                 "Install: pip install markdown beautifulsoup4",
             )
 
-    def _render_tag(self, scroll: ctk.CTkFrame, el, row: int) -> int:
+    # ── Block-level renderers ──────────────────────────────────────────────
+
+    def _render_tag(self, parent: ctk.CTkFrame, el, row: int) -> int:
         from bs4 import Tag
 
         name = el.name
         if name in ("h1", "h2", "h3", "h4"):
-            return self._heading(scroll, el, row)
+            return self._heading(parent, el, row)
         if name == "p":
-            return self._paragraph(scroll, el, row)
+            return self._paragraph(parent, el, row)
         if name == "pre":
-            return self._pre(scroll, el, row)
+            return self._pre(parent, el, row)
         if name == "table":
-            return self._table(scroll, el, row)
+            return self._table(parent, el, row)
         if name in ("ul", "ol"):
-            return self._list_block(scroll, el, row, ordered=(name == "ol"))
+            return self._list_block(parent, el, row, ordered=(name == "ol"))
         if name == "blockquote":
-            return self._blockquote(scroll, el, row)
+            return self._blockquote(parent, el, row)
         if name == "hr":
-            sep = ctk.CTkFrame(scroll, height=1, fg_color=COLORS["card_border"])
-            sep.grid(row=row, column=0, sticky="ew", padx=PAD["lg"], pady=10)
+            ctk.CTkFrame(parent, height=1, fg_color=COLORS["card_border"]).grid(
+                row=row, column=0, sticky="ew", padx=PAD["lg"], pady=10,
+            )
             return row + 1
         if name == "div":
             for ch in el.children:
                 if isinstance(ch, Tag):
-                    row = self._render_tag(scroll, ch, row)
+                    row = self._render_tag(parent, ch, row)
             return row
         t = el.get_text("\n", strip=True)
         if t:
-            self._body_label(scroll, row, t)
+            ctk.CTkLabel(
+                parent, text=t, font=self._fonts["body"],
+                text_color=COLORS["text"], anchor="nw", justify="left",
+                wraplength=_WRAP,
+            ).grid(row=row, column=0, sticky="ew", padx=PAD["lg"], pady=(2, 6))
             return row + 1
         return row
 
-    def _heading(self, scroll: ctk.CTkFrame, el: Tag, row: int) -> int:
+    def _heading(self, parent: ctk.CTkFrame, el, row: int) -> int:
         level = int(el.name[1])
         if level == 1:
             font = self._fonts["readme_h1"]
@@ -253,57 +412,39 @@ class ReadMePanel(ctk.CTkFrame):
         text = el.get_text(strip=True)
         pad = (PAD["md"], 4) if level == 1 else (12, 2)
         ctk.CTkLabel(
-            scroll, text=text, font=font, text_color=color,
+            parent, text=text, font=font, text_color=color,
             anchor="w", justify="left", wraplength=_WRAP,
         ).grid(row=row, column=0, sticky="ew", padx=PAD["lg"], pady=pad)
         row += 1
         if level == 1:
-            line = ctk.CTkFrame(scroll, height=1, fg_color=COLORS["card_border"])
-            line.grid(row=row, column=0, sticky="ew", padx=PAD["lg"], pady=(0, 8))
+            ctk.CTkFrame(parent, height=1, fg_color=COLORS["card_border"]).grid(
+                row=row, column=0, sticky="ew", padx=PAD["lg"], pady=(0, 8),
+            )
             row += 1
         return row
 
-    def _paragraph(self, scroll: ctk.CTkFrame, el: Tag, row: int) -> int:
-        text = _inline_plain(el)
-        if not text:
-            return row
-        self._body_label(scroll, row, text)
-        return row + 1
+    def _paragraph(self, parent: ctk.CTkFrame, el, row: int) -> int:
+        return self._render_inline(parent, el, row, padx=PAD["lg"])
 
-    def _body_label(self, scroll: ctk.CTkFrame, row: int, text: str) -> None:
-        ctk.CTkLabel(
-            scroll,
-            text=text,
-            font=self._fonts["body"],
-            text_color=COLORS["text"],
-            anchor="nw",
-            justify="left",
-            wraplength=_WRAP,
-        ).grid(row=row, column=0, sticky="ew", padx=PAD["lg"], pady=(2, 6))
-
-    def _pre(self, scroll: ctk.CTkFrame, el: Tag, row: int) -> int:
+    def _pre(self, parent: ctk.CTkFrame, el, row: int) -> int:
         code_el = el.find("code")
         raw = code_el.get_text() if code_el else el.get_text()
         box = ctk.CTkFrame(
-            scroll, fg_color=COLORS["code_bg"], corner_radius=RADIUS["input"],
+            parent, fg_color=COLORS["code_bg"], corner_radius=RADIUS["input"],
             border_width=1, border_color=COLORS["code_border"],
         )
         box.grid(row=row, column=0, sticky="ew", padx=PAD["lg"], pady=(4, 8))
         box.grid_columnconfigure(0, weight=1)
         ctk.CTkLabel(
-            box,
-            text=raw.rstrip("\n"),
-            font=self._fonts["mono"],
-            text_color=COLORS["cmd"],
-            anchor="nw",
-            justify="left",
+            box, text=raw.rstrip("\n"), font=self._fonts["mono"],
+            text_color=COLORS["cmd"], anchor="nw", justify="left",
             wraplength=_WRAP - 40,
         ).grid(row=0, column=0, sticky="ew", padx=12, pady=10)
         return row + 1
 
-    def _table(self, scroll: ctk.CTkFrame, el: Tag, row: int) -> int:
+    def _table(self, parent: ctk.CTkFrame, el, row: int) -> int:
         tbl = ctk.CTkFrame(
-            scroll, fg_color=COLORS["code_bg"], corner_radius=RADIUS["input"],
+            parent, fg_color=COLORS["code_bg"], corner_radius=RADIUS["input"],
             border_width=1, border_color=COLORS["code_border"],
         )
         tbl.grid(row=row, column=0, sticky="ew", padx=PAD["lg"], pady=(4, 10))
@@ -312,57 +453,44 @@ class ReadMePanel(ctk.CTkFrame):
             cells = tr.find_all(["th", "td"])
             if not cells:
                 continue
-            n = len(cells)
-            for c in range(n):
+            for c in range(len(cells)):
                 tbl.grid_columnconfigure(c, weight=1, uniform="readme_tbl")
             is_head = cells[0].name == "th"
             for c, cell in enumerate(cells):
                 txt = cell.get_text(strip=True)
                 font = self._fonts["readme_h3"] if is_head else self._fonts["body"]
                 tc = COLORS["accent"] if is_head else COLORS["text"]
-                # anchor=nw + justify=left: CTkLabel otherwise centers wrapped lines in wide cells
                 ctk.CTkLabel(
-                    tbl,
-                    text=txt,
-                    font=font,
-                    text_color=tc,
-                    anchor="nw",
-                    justify="left",
-                    wraplength=360,
+                    tbl, text=txt, font=font, text_color=tc,
+                    anchor="nw", justify="left", wraplength=360,
                 ).grid(row=r, column=c, sticky="nsew", padx=10, pady=8)
             r += 1
         return row + 1
 
-    def _list_block(self, scroll: ctk.CTkFrame, el: Tag, row: int, *, ordered: bool) -> int:
+    def _list_block(self, parent: ctk.CTkFrame, el, row: int, *, ordered: bool) -> int:
         idx = 1
         for li in el.find_all("li", recursive=False):
             bullet = f"{idx}. " if ordered else "•  "
             if ordered:
                 idx += 1
-            main = _li_main_text(li)
-            ctk.CTkLabel(
-                scroll,
-                text=f"{bullet}{main}",
-                font=self._fonts["body"],
-                text_color=COLORS["text"],
-                anchor="nw",
-                justify="left",
+            li_padx = (PAD["lg"] + 8, PAD["lg"])
+            row = self._render_inline(
+                parent, li, row,
+                padx=li_padx, pady=(1, 1),
                 wraplength=_WRAP - 24,
-            ).grid(row=row, column=0, sticky="ew", padx=(PAD["lg"] + 8, PAD["lg"]), pady=1)
-            row += 1
+                prefix=bullet,
+            )
             for nested in li.find_all(["ul", "ol"], recursive=False):
-                row = self._list_block(scroll, nested, row, ordered=(nested.name == "ol"))
+                row = self._list_block(parent, nested, row, ordered=(nested.name == "ol"))
         return row
 
-    def _blockquote(self, scroll: ctk.CTkFrame, el, row: int) -> int:
+    def _blockquote(self, parent: ctk.CTkFrame, el, row: int) -> int:
         from bs4 import Tag
 
         wrap = ctk.CTkFrame(
-            scroll,
-            fg_color=COLORS["code_bg"],
+            parent, fg_color=COLORS["code_bg"],
             corner_radius=RADIUS["input"],
-            border_width=1,
-            border_color=COLORS["accent"],
+            border_width=1, border_color=COLORS["accent"],
         )
         wrap.grid(row=row, column=0, sticky="ew", padx=PAD["lg"], pady=6)
         wrap.grid_columnconfigure(0, weight=1)
@@ -370,29 +498,9 @@ class ReadMePanel(ctk.CTkFrame):
         for ch in el.children:
             if not isinstance(ch, Tag) or ch.name in ("ul", "ol"):
                 continue
-            t = _inline_plain(ch) if ch.name == "p" else ch.get_text(strip=True)
-            if t:
-                ctk.CTkLabel(
-                    wrap, text=t, font=self._fonts["body"],
-                    text_color=COLORS["text"], anchor="nw", justify="left",
-                    wraplength=_WRAP - 48,
-                ).grid(row=sub, column=0, sticky="ew", padx=14, pady=6)
-                sub += 1
+            sub = self._render_inline(
+                wrap, ch, sub,
+                padx=14, pady=(6, 6),
+                wraplength=_WRAP - 48,
+            )
         return row + 1
-
-
-def _li_main_text(li) -> str:
-    """Text in <li> excluding nested lists."""
-    from bs4 import Tag
-
-    parts: list[str] = []
-    for ch in li.children:
-        if isinstance(ch, Tag) and ch.name in ("ul", "ol"):
-            continue
-        if isinstance(ch, Tag):
-            parts.append(_inline_plain(ch) if ch.name == "p" else ch.get_text())
-        else:
-            s = str(ch).strip()
-            if s:
-                parts.append(s)
-    return " ".join(parts).strip()
