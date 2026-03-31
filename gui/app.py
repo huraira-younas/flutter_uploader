@@ -28,11 +28,12 @@ from helpers.shell import terminate_active_processes
 from helpers.build_report import send_build_report
 from helpers.types import fmt_elapsed
 
+from gui.widgets import scrollable_frame, segmented_button
+from gui.settings import SettingsPanel, load_saved_theme
 from helpers.version import write_version
 from gui.theme import COLORS, RADIUS, PAD
 from gui.cards import CardBuilderMixin
 from gui.console import ConsolePanel
-from gui.settings import SettingsPanel, load_saved_theme
 from gui.readme import ReadMePanel
 from core.run import run_selected
 import customtkinter as ctk
@@ -68,14 +69,14 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
         self._git_enabled = ctk.BooleanVar(value=True)
 
         self._power_mode = ctk.StringVar(value="Sleep" if self._show_ios else "Shutdown")
-        self._quit_after_power = ctk.BooleanVar(value=False)
-        self._post_sub_widgets: list = []
         self._ios_sb_mode = ctk.StringVar(value="Release") if self._show_ios else None
         self._sb_mode_widgets: dict[str, ctk.CTkSegmentedButton] = {}
         self._android_sb_mode = ctk.StringVar(value="Release")
         self._sb_checkboxes: dict[str, ctk.CTkCheckBox] = {}
+        self._quit_after_power = ctk.BooleanVar(value=False)
         self._sb_hint_labels: dict[str, ctk.CTkLabel] = {}
         self._pub_mode = ctk.StringVar(value="pub get")
+        self._post_sub_widgets: list = []
 
         self.step_progress_bars: dict[str, ctk.CTkProgressBar] = {}
         self.step_status_labels: dict[str, ctk.CTkLabel] = {}
@@ -123,11 +124,9 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
         tab_bar = ctk.CTkFrame(self, fg_color="transparent")
         tab_bar.grid(row=1, column=0, sticky="ew", padx=PAD["lg"])
 
-        self._tab_selector = ctk.CTkSegmentedButton(
+        self._tab_selector = segmented_button(
             tab_bar, values=["Config", "Console", "ReadMe", "Settings"],
             command=self._switch_tab, font=self._fonts["body_sm"],
-            selected_color=COLORS["accent"], selected_hover_color=COLORS["accent_hover"],
-            height=26, corner_radius=6,
         )
         self._tab_selector.set("Config")
         self._tab_selector.pack(anchor="w")
@@ -150,13 +149,9 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
         self._readme_frame = self._tab_frames["ReadMe"]
         self._config_frame = self._tab_frames["Config"]
 
-        self.config_scroll = ctk.CTkScrollableFrame(
-            self._config_frame, fg_color="transparent",
-            scrollbar_button_color=COLORS["card_border"],
-            scrollbar_button_hover_color=COLORS["hover"],
+        self.config_scroll = scrollable_frame(
+            self._config_frame, row=0, column=0, sticky="nsew",
         )
-        self.config_scroll.grid(row=0, column=0, sticky="nsew")
-        self.config_scroll.grid_columnconfigure(0, weight=1)
 
         row = 0
         self._build_info_card(row); row += 1

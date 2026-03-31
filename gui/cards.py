@@ -9,8 +9,8 @@ import customtkinter as ctk
 import os
 
 
+from gui.widgets import card, section_label, segmented_button
 from core.constants import DEFAULT_GMAIL_RECIPIENTS, StepDef
-from gui.widgets import card, section_label
 from gui.theme import COLORS, RADIUS, PAD
 from helpers.version import read_version
 
@@ -88,11 +88,9 @@ class CardBuilderMixin:
         switch.grid(row=0, column=0, sticky="w")
         self._section_switches.setdefault("common", []).append(switch)
 
-        self._track(ctk.CTkSegmentedButton(
+        self._track(segmented_button(
             row_frame, values=["pub get", "pub upgrade"],
             variable=self._pub_mode, font=self._fonts["body_sm"],
-            selected_color=COLORS["accent"], selected_hover_color=COLORS["accent_hover"],
-            height=26, corner_radius=6,
         )).grid(row=0, column=1, padx=PAD["sm"])
 
         self._add_status_widgets(row_frame, "pub_get", column=2)
@@ -143,11 +141,9 @@ class CardBuilderMixin:
         mode_seg: ctk.CTkSegmentedButton | None = None
 
         if mode_var is not None:
-            mode_seg = ctk.CTkSegmentedButton(
+            mode_seg = segmented_button(
                 header, values=["Release", "Patch"],
                 variable=mode_var, font=self._fonts["body_sm"],
-                selected_color=COLORS["accent"], selected_hover_color=COLORS["accent_hover"],
-                height=26, corner_radius=6,
                 command=lambda _=None, sk=section_key: self._on_shorebird_mode_changed(sk),
             )
             mode_seg.grid(row=0, column=col, sticky="e", padx=(0, PAD["sm"]))
@@ -210,11 +206,9 @@ class CardBuilderMixin:
 
         status_col = 1
         if key == "shutdown":
-            self._track(ctk.CTkSegmentedButton(
+            self._track(segmented_button(
                 row_frame, values=["Shutdown", "Sleep"],
                 variable=self._power_mode, font=self._fonts["body_sm"],
-                selected_color=COLORS["accent"], selected_hover_color=COLORS["accent_hover"],
-                height=26, corner_radius=6,
             )).grid(row=0, column=status_col, padx=PAD["sm"])
             status_col += 1
             qcb = self._track(ctk.CTkCheckBox(

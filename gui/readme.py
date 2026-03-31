@@ -14,7 +14,7 @@ from core.constants import (
 )
 
 from gui.theme import COLORS, HEADING_COLORS, RADIUS, PAD
-from gui.widgets import card, section_label
+from gui.widgets import card, scrollable_frame, section_label, segmented_button
 
 _MD_EXTENSIONS = (
     "markdown.extensions.fenced_code",
@@ -112,15 +112,10 @@ class ReadMePanel(ctk.CTkFrame):
 
     def _build(self) -> None:
         titles = [t[0] for t in self._DOC_TABS]
-        self._seg = ctk.CTkSegmentedButton(
-            self,
-            values=titles,
+        self._seg = segmented_button(
+            self, values=titles,
             command=self._on_doc_segment,
             font=self._fonts["body_sm"],
-            height=26,
-            corner_radius=6,
-            selected_color=COLORS["accent"],
-            selected_hover_color=COLORS["accent_hover"],
         )
         self._seg.grid(row=0, column=0, sticky="ew", pady=(0, 10))
 
@@ -158,16 +153,9 @@ class ReadMePanel(ctk.CTkFrame):
         self._mount_doc_tab(self._tab_frames[first_title], first_path, first_title)
         self._mounted_doc_tabs.add(first_title)
 
-    def _tab_scroll(self, parent: ctk.CTkFrame) -> ctk.CTkScrollableFrame:
-        """Create a tab-level scrollable frame (same pattern as Config tab)."""
-        scroll = ctk.CTkScrollableFrame(
-            parent, fg_color="transparent",
-            scrollbar_button_color=COLORS["card_border"],
-            scrollbar_button_hover_color=COLORS["hover"],
-        )
-        scroll.grid(row=0, column=0, sticky="nsew")
-        scroll.grid_columnconfigure(0, weight=1)
-        return scroll
+    @staticmethod
+    def _tab_scroll(parent: ctk.CTkFrame) -> ctk.CTkScrollableFrame:
+        return scrollable_frame(parent, row=0, column=0, sticky="nsew")
 
     def _show_error_in_tab(self, parent: ctk.CTkFrame, message: str) -> None:
         scroll = self._tab_scroll(parent)
@@ -366,7 +354,7 @@ class ReadMePanel(ctk.CTkFrame):
                 row = self._list_block(scroll, nested, row, ordered=(nested.name == "ol"))
         return row
 
-    def _blockquote(self, scroll: ctk.CTkScrollableFrame, el, row: int) -> int:
+    def _blockquote(self, scroll: ctk.CTkFrame, el, row: int) -> int:
         from bs4 import Tag
 
         wrap = ctk.CTkFrame(
@@ -380,24 +368,16 @@ class ReadMePanel(ctk.CTkFrame):
         wrap.grid_columnconfigure(0, weight=1)
         sub = 0
         for ch in el.children:
-            if isinstance(ch, Tag) and ch.name == "p":
-                t = _inline_plain(ch)
-                if t:
-                    ctk.CTkLabel(
-                        wrap, text=t, font=self._fonts["body"],
-                        text_color=COLORS["text"], anchor="nw", justify="left",
-                        wraplength=_WRAP - 48,
-                    ).grid(row=sub, column=0, sticky="ew", padx=14, pady=6)
-                    sub += 1
-            elif isinstance(ch, Tag) and ch.name not in ("ul", "ol"):
-                t = ch.get_text(strip=True)
-                if t:
-                    ctk.CTkLabel(
-                        wrap, text=t, font=self._fonts["body"],
-                        text_color=COLORS["text"], anchor="nw", justify="left",
-                        wraplength=_WRAP - 48,
-                    ).grid(row=sub, column=0, sticky="ew", padx=14, pady=6)
-                    sub += 1
+            if not isinstance(ch, Tag) or ch.name in ("ul", "ol"):
+                continue
+            t = _inline_plain(ch) if ch.name == "p" else ch.get_text(strip=True)
+            if t:
+                ctk.CTkLabel(
+                    wrap, text=t, font=self._fonts["body"],
+                    text_color=COLORS["text"], anchor="nw", justify="left",
+                    wraplength=_WRAP - 48,
+                ).grid(row=sub, column=0, sticky="ew", padx=14, pady=6)
+                sub += 1
         return row + 1
 
 

@@ -9,7 +9,7 @@ import os
 
 import customtkinter as ctk
 
-from gui.widgets import card, section_label
+from gui.widgets import card, scrollable_frame, section_label
 from gui.theme import (
     available_themes, get_theme, set_theme,
     COLORS, RADIUS, PAD, Theme,
@@ -17,17 +17,11 @@ from gui.theme import (
 
 _PREFS_PATH = Path(__file__).resolve().parent.parent / ".gui_prefs.json"
 
-_DISPLAY_NAMES: dict[str, str] = {
-    "catppuccin_mocha": "Catppuccin Mocha",
-    "dracula": "Dracula",
-    "tokyo_night": "Tokyo Night",
-    "gruvbox": "Gruvbox",
-    "nord": "Nord",
-    "one_dark": "One Dark",
-    "solarized_dark": "Solarized Dark",
-}
-
 _SWATCH_KEYS = ("bg", "card_bg", "accent", "success", "danger", "warn", "text", "muted")
+
+
+def _display_name(name: str) -> str:
+    return name.replace("_", " ").title()
 
 
 def load_saved_theme() -> str | None:
@@ -52,7 +46,6 @@ def _save_theme(name: str) -> None:
 class SettingsPanel(ctk.CTkFrame):
     """Theme selection grid with live color swatch previews."""
 
-    _CARD_W = 260
     _SWATCH_SIZE = 22
 
     def __init__(self, parent: ctk.CTkFrame, fonts: dict, app: ctk.CTk):
@@ -64,13 +57,7 @@ class SettingsPanel(ctk.CTkFrame):
         self._build()
 
     def _build(self) -> None:
-        scroll = ctk.CTkScrollableFrame(
-            self, fg_color="transparent",
-            scrollbar_button_color=COLORS["card_border"],
-            scrollbar_button_hover_color=COLORS["hover"],
-        )
-        scroll.grid(row=0, column=0, sticky="nsew")
-        scroll.grid_columnconfigure(0, weight=1)
+        scroll = scrollable_frame(self, row=0, column=0, sticky="nsew")
 
         outer = card(scroll, row=0, column=0, sticky="ew", pady=(0, 12))
         outer.grid_columnconfigure(0, weight=1)
@@ -104,7 +91,7 @@ class SettingsPanel(ctk.CTkFrame):
     ) -> None:
         theme = Theme._registry[name]
         colors = theme.colors
-        display = _DISPLAY_NAMES.get(name, name.replace("_", " ").title())
+        display = _display_name(name)
 
         border_color = COLORS["accent"] if is_active else colors.get("card_border", "#333")
         border_w = 2 if is_active else 1
@@ -192,7 +179,7 @@ class SettingsPanel(ctk.CTkFrame):
         _save_theme(name)
         set_theme(name)
         self._hint.configure(
-            text=f"Restarting with {_DISPLAY_NAMES.get(name, name)}...",
+            text=f"Restarting with {_display_name(name)}...",
             text_color=COLORS["accent"],
         )
         self._app.after(400, self._restart)

@@ -239,7 +239,7 @@ Theme(
 
 # ── Active theme + public API ─────────────────────────────────────────────────
 
-_DEFAULT_THEME = "catppuccin_mocha"
+_DEFAULT_THEME = "one_dark"
 
 _active: Theme = Theme._registry[_DEFAULT_THEME]
 
