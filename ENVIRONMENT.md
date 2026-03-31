@@ -4,6 +4,8 @@ Copy **`.env.example`** → **`.env`** next to `run.py`. Do not commit `.env`.
 
 **`FLUTTER_PROJECT_ROOT`** — absolute path to the Flutter project this app runs pipelines against (directory that contains `pubspec.yaml`). Logs and `outputs/` stay in this Python app’s folder.
 
+**`.gui_prefs.json`** — auto-generated file that stores GUI preferences (e.g. selected theme). Git-ignored; safe to delete to reset to defaults.
+
 **Read Me → Environment** in the GUI · [`README.md`](README.md)
 
 ---

@@ -7,6 +7,7 @@
 | **Read Me (app)** | Tabs: **README** · **CLI** · **Environment** |
 | **CLI file** | [`CLI_REFERENCE.md`](CLI_REFERENCE.md) |
 | **Secrets & setup** | [`ENVIRONMENT.md`](ENVIRONMENT.md) · `.env` (repo root) |
+| **Theme settings** | **Settings** tab in the GUI |
 
 ---
 
@@ -52,6 +53,24 @@ Artifacts are copied into **`outputs/`** here; the Flutter project’s `build/` 
 ## Section toggles
 
 Each of **Git**, **Android**, **iOS**, and **Post-build** has an **Enabled** switch. Turning a section off skips all of its steps—handy for Android-only or iOS-only runs.
+
+---
+
+## Themes
+
+The **Settings** tab lets you switch between built-in dark themes:
+
+| Theme | Style |
+|:---|:---|
+| **Catppuccin Mocha** | Warm pastels (default) |
+| **Dracula** | Vibrant purple |
+| **Tokyo Night** | Cool, muted blue |
+| **Gruvbox** | Earthy, retro |
+| **Nord** | Arctic frost |
+| **One Dark** | Atom-style |
+| **Solarized Dark** | Precision palette |
+
+Click **Apply** on any theme card—the app restarts instantly with the new look. Your choice is saved to `.gui_prefs.json` (git-ignored).
 
 ---
 
