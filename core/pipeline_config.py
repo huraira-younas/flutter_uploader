@@ -8,19 +8,21 @@ from typing import Callable
 from core.constants import (
     ANDROID_STEPS, IOS_STEPS, GIT_POST_STEPS, POST_STEPS,
     COMMIT_PRE_STEPS, COMMON_STEPS, GIT_SYNC_STEPS,
+    DEFAULT_COMMIT_MESSAGE_PRE, DEFAULT_COMMIT_MESSAGE_RELEASE,
     StepDef,
 )
 
 
-# Execution order: pre-commit first, then clean/pub, pull, builds, post-git, post-build.
+# Execution order: pre-commit → clean/pub → pull → builds → release commit + push → post-build.
+# ``git_post`` appears twice so pull runs before Android/iOS; release/push run after (same section flag).
 _SECTION_DEFS: tuple[tuple[str, list[StepDef]], ...] = (
-    ("git",     COMMIT_PRE_STEPS),
+    ("git_pre", COMMIT_PRE_STEPS),
     ("common",  COMMON_STEPS),
-    ("git",     GIT_SYNC_STEPS),
+    ("git_post", GIT_SYNC_STEPS),
     ("android", ANDROID_STEPS),
-    ("ios",     IOS_STEPS),
-    ("git",     GIT_POST_STEPS),
-    ("post",    POST_STEPS),
+    ("ios", IOS_STEPS),
+    ("git_post", GIT_POST_STEPS),
+    ("post", POST_STEPS),
 )
 
 ALL_STEP_DEFS: dict[str, StepDef] = {
@@ -41,7 +43,8 @@ def _section_flags(cfg: PipelineConfig, *, ios_resolved: bool) -> dict[str, bool
     ``include_ios and cfg.ios_enabled`` (pass that as *ios_resolved*)."""
     return {
         "common": cfg.common_enabled,
-        "git": cfg.git_enabled,
+        "git_pre": cfg.git_pre_enabled,
+        "git_post": cfg.git_post_enabled,
         "android": cfg.android_enabled,
         "ios": ios_resolved,
         "post": cfg.post_enabled,
@@ -50,7 +53,8 @@ def _section_flags(cfg: PipelineConfig, *, ios_resolved: bool) -> dict[str, bool
 
 @dataclass(frozen=True, slots=True)
 class PipelineConfig:
-    commit_message: str = "pre-release cleanup"
+    commit_message_pre: str = DEFAULT_COMMIT_MESSAGE_PRE
+    commit_message_release: str = DEFAULT_COMMIT_MESSAGE_RELEASE
     android_build_mode: str = "flutter"
     ios_build_mode: str = "flutter"
     power_mode: str = "Shutdown"
@@ -65,7 +69,8 @@ class PipelineConfig:
     pub_upgrade: bool = False
     post_enabled: bool = True
     ios_enabled: bool = True
-    git_enabled: bool = True
+    git_pre_enabled: bool = True
+    git_post_enabled: bool = True
     common_enabled: bool = True
 
     def run_kwargs(self) -> dict:
@@ -74,7 +79,8 @@ class PipelineConfig:
             "quit_after_power": self.quit_after_power,
             "drive_email_link_to": self.recipients,
             "ios_build_mode": self.ios_build_mode,
-            "commit_message": self.commit_message,
+            "commit_message": self.commit_message_pre,
+            "commit_message_release": self.commit_message_release,
             "pub_upgrade": self.pub_upgrade,
             "power_mode": self.power_mode,
             "version": self.version,

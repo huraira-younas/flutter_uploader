@@ -7,6 +7,10 @@ import sys
 APP_TITLE = "Flutter Uploader"
 APP_VERSION = "5.4"
 
+DEFAULT_COMMIT_MESSAGE_PRE = "pre-release cleanup"
+# Substituted at run time: ``{version}`` and ``{build}`` from pubspec.
+DEFAULT_COMMIT_MESSAGE_RELEASE = "v{version} ({build})"
+
 IS_WIN = sys.platform == "win32"
 
 UPLOADER_DIR = Path(__file__).resolve().parent.parent
@@ -158,6 +162,9 @@ GIT_POST_STEPS: list[StepDef] = [
     ("git_commit_rel", "Release Commit", "git add . && git commit v{ver}", True),
     ("git_push",       "Push Master",    "git push origin master",         True),
 ]
+
+# Pull + release commit + push (Post-Git UI card; pipeline runs pull before builds, rest after).
+GIT_POST_SECTION_STEPS: list[StepDef] = GIT_SYNC_STEPS + GIT_POST_STEPS
 
 POST_STEPS: list[StepDef] = [
     ("open_folders",  "Open Outputs",    "Open outputs folder",         False),

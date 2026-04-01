@@ -65,12 +65,22 @@ def run_git_pull(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) 
     )
 
 
-def run_git_commit_release(version: str, build: str, log: LogFn = _log_noop) -> bool:
-    msg = f"v{version} ({build})"
-    log(f'\n>> git add . && git commit -m "{msg}"\n')
+def format_release_commit_message(template: str, version: str, build: str) -> str:
+    """Apply ``{version}`` and ``{build}`` placeholders; if empty, use ``v{{version}} ({{build}})``."""
+    t = (template or "").strip()
+    if not t:
+        return f"v{version} ({build})"
+    try:
+        return t.format(version=version, build=build)
+    except (KeyError, ValueError, IndexError):
+        return t
+
+
+def run_git_commit_release(message: str, log: LogFn = _log_noop) -> bool:
+    log(f'\n>> git add . && git commit -m "{message}"\n')
     if not _CMD.run_project(["git", "add", "."], log):
         return False
-    return _CMD.run_project(["git", "commit", "-m", msg], log)
+    return _CMD.run_project(["git", "commit", "-m", message], log)
 
 
 def run_git_push(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
@@ -248,6 +258,7 @@ def _build_runners(
     android_build_mode: str = "release",
     ios_build_mode: str = "release",
     commit_message: str = "pre-release cleanup",
+    commit_message_release: str = "v{version} ({build})",
     pub_upgrade: bool = False,
     power_mode: str = "Shutdown",
 ) -> dict[str, Callable[[LogFn], bool]]:
@@ -288,10 +299,12 @@ def _build_runners(
             copy_ipas_to_outputs(version, build, log)
         return ok
 
+    release_msg = format_release_commit_message(commit_message_release, version, build)
+
     return {
         "drive_upload":    lambda l: run_drive_upload(recipients, version, build, l, stop_check=stop_check),
         "appstore_upload": _appstore_runner,
-        "git_commit_rel":  lambda l: run_git_commit_release(version, build, l),
+        "git_commit_rel":  lambda l: run_git_commit_release(release_msg, l),
         "git_commit_pre":  lambda l: run_git_commit_pre(commit_message, l),
         "open_folders":    lambda l: run_open_outputs(l),
         "shutdown":        lambda l: power_fn(l),
@@ -321,6 +334,7 @@ def run_selected(
     android_build_mode: str = "release",
     ios_build_mode: str = "release",
     commit_message: str = "pre-release cleanup",
+    commit_message_release: str = "v{version} ({build})",
     pub_upgrade: bool = False,
     power_mode: str = "Shutdown",
     quit_after_power: bool = False,
@@ -336,6 +350,7 @@ def run_selected(
         version, build, drive_email_link_to, stop_check,
         android_build_mode=android_build_mode,
         commit_message=commit_message,
+        commit_message_release=commit_message_release,
         ios_build_mode=ios_build_mode,
         pub_upgrade=pub_upgrade,
         power_mode=power_mode,

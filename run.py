@@ -12,6 +12,8 @@ from core.constants import (
     UPLOADER_DIR,
     StepResult,
     APP_TITLE,
+    DEFAULT_COMMIT_MESSAGE_PRE,
+    DEFAULT_COMMIT_MESSAGE_RELEASE,
 )
 
 
@@ -83,7 +85,16 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     run.add_argument("--version", metavar="VER", help="App version (default: from pubspec.yaml).")
     run.add_argument("--build", metavar="NUM", help="Build number (default: from pubspec.yaml).")
     run.add_argument("--recipients", metavar="EMAILS", help="Comma-separated email addresses for Drive link.")
-    run.add_argument("--commit-message", metavar="MSG", default="pre-release cleanup", help="Git commit message.")
+    run.add_argument(
+        "--commit-message", metavar="MSG", default=DEFAULT_COMMIT_MESSAGE_PRE,
+        help="Pre-Git commit message (default: %(default)s).",
+    )
+    run.add_argument(
+        "--release-commit-message", metavar="MSG",
+        default=DEFAULT_COMMIT_MESSAGE_RELEASE,
+        dest="release_commit_message",
+        help="Post-Git release commit template; {version} and {build} are substituted (default: %(default)s).",
+    )
     run.add_argument(
         "--pub-mode", choices=["pub-get", "pub-upgrade"], default="pub-get",
         help="Dependency resolution mode (default: pub-get).",
@@ -106,7 +117,7 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     )
 
     sections = parser.add_argument_group("section toggles")
-    for key in ("common", "android", "ios", "git", "post"):
+    for key in ("common", "android", "ios", "post"):
         sections.add_argument(
             f"--{key}", action="store_true", default=None, dest=f"{key}_on",
             help=f"Enable {key} section.",
@@ -115,6 +126,32 @@ def _build_cli_parser() -> argparse.ArgumentParser:
             f"--no-{key}", action="store_false", dest=f"{key}_on",
             help=f"Disable {key} section.",
         )
+
+    git_sections = parser.add_argument_group("git section toggles")
+    git_sections.add_argument(
+        "--pre-git", action="store_true", default=None, dest="pre_git_on",
+        help="Enable Pre-Git section (pre-release commit).",
+    )
+    git_sections.add_argument(
+        "--no-pre-git", action="store_false", dest="pre_git_on",
+        help="Disable Pre-Git section.",
+    )
+    git_sections.add_argument(
+        "--post-git", action="store_true", default=None, dest="post_git_on",
+        help="Enable Post-Git section (pull, release commit, push).",
+    )
+    git_sections.add_argument(
+        "--no-post-git", action="store_false", dest="post_git_on",
+        help="Disable Post-Git section.",
+    )
+    git_sections.add_argument(
+        "--git", action="store_true", default=None, dest="git_on",
+        help="Enable both Pre-Git and Post-Git sections (overrides --pre-git/--post-git when set).",
+    )
+    git_sections.add_argument(
+        "--no-git", action="store_false", dest="git_on",
+        help="Disable both Pre-Git and Post-Git sections (overrides --pre-git/--post-git when set).",
+    )
 
     steps = parser.add_argument_group("step selection")
     steps.add_argument(
@@ -168,17 +205,26 @@ def _run_cli(args: argparse.Namespace) -> None:
         enabled_steps = frozenset(keys)
 
     include_ios = is_macos()
+    if args.git_on is not None:
+        git_pre_enabled = args.git_on
+        git_post_enabled = args.git_on
+    else:
+        git_pre_enabled = args.pre_git_on if args.pre_git_on is not None else True
+        git_post_enabled = args.post_git_on if args.post_git_on is not None else True
+
     cfg = PipelineConfig(
         version=version,
         build=build_num,
         recipients=args.recipients,
-        commit_message=args.commit_message,
+        commit_message_pre=args.commit_message,
+        commit_message_release=args.release_commit_message,
         pub_upgrade=args.pub_mode == "pub-upgrade",
         android_build_mode=android_mode,
         ios_build_mode=ios_mode,
         power_mode=power_mode,
         quit_after_power=args.quit_after_power,
-        git_enabled=args.git_on if args.git_on is not None else True,
+        git_pre_enabled=git_pre_enabled,
+        git_post_enabled=git_post_enabled,
         common_enabled=args.common_on if args.common_on is not None else True,
         android_enabled=args.android_on if args.android_on is not None else True,
         ios_enabled=args.ios_on if args.ios_on is not None else include_ios,

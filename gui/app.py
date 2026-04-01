@@ -11,9 +11,10 @@ import sys
 import time
 
 from core.constants import (
-    GIT_PRE_STEPS, ANDROID_STEPS, IOS_STEPS,
+    COMMIT_PRE_STEPS, GIT_POST_SECTION_STEPS, ANDROID_STEPS, IOS_STEPS,
     APP_TITLE, APP_VERSION, StepDef, StepResult,
-    GIT_POST_STEPS, POST_STEPS,
+    POST_STEPS,
+    DEFAULT_COMMIT_MESSAGE_PRE, DEFAULT_COMMIT_MESSAGE_RELEASE,
     MAX_REPORT_LOG_LINES,
 )
 
@@ -67,7 +68,8 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
         self._android_enabled = ctk.BooleanVar(value=True)
         self._common_enabled = ctk.BooleanVar(value=True)
         self._post_enabled = ctk.BooleanVar(value=True)
-        self._git_enabled = ctk.BooleanVar(value=True)
+        self._git_pre_enabled = ctk.BooleanVar(value=True)
+        self._git_post_enabled = ctk.BooleanVar(value=True)
 
         self._power_mode = ctk.StringVar(value="Sleep" if self._show_ios else "Shutdown")
         self._ios_sb_mode = ctk.StringVar(value="Release") if self._show_ios else None
@@ -79,6 +81,10 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
         self._pub_mode = ctk.StringVar(value="pub get")
         self._post_sub_widgets: list = []
         self._common_sub_widgets: list = []
+        self._section_extra_widgets: dict[str, list] = {}
+
+        self._commit_msg_pre = ctk.StringVar(value=DEFAULT_COMMIT_MESSAGE_PRE)
+        self._commit_msg_release = ctk.StringVar(value=DEFAULT_COMMIT_MESSAGE_RELEASE)
 
         self.step_progress_bars: dict[str, ctk.CTkProgressBar] = {}
         self.step_status_labels: dict[str, ctk.CTkLabel] = {}
@@ -161,10 +167,16 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
 
         row = 0
         self._build_info_card(row); row += 1
+        row = self._build_section_card(
+            "Pre-Git", COMMIT_PRE_STEPS, "git_pre",
+            row=row, enable_var=self._git_pre_enabled,
+            commit_message_row=("Commit message:", self._commit_msg_pre),
+        )
         row = self._build_common_card(row)
         row = self._build_section_card(
-            "Git", GIT_PRE_STEPS + GIT_POST_STEPS, "git",
-            row=row, enable_var=self._git_enabled,
+            "Post-Git", GIT_POST_SECTION_STEPS, "git_post",
+            row=row, enable_var=self._git_post_enabled,
+            commit_message_row=("Release commit message:", self._commit_msg_release),
         )
         row = self._build_section_card(
             "Android Build", ANDROID_STEPS, "android",
@@ -275,6 +287,11 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
                     w.configure(state=state)
                 except Exception:
                     pass
+        for w in self._section_extra_widgets.get(section_key, []):
+            try:
+                w.configure(state=state)
+            except Exception:
+                pass
 
     def _on_shorebird_toggle(self, section_key: str, var: ctk.BooleanVar) -> None:
         if not self._shorebird_ok:
@@ -491,6 +508,11 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
                         w.configure(state=state)
                     except Exception:
                         pass
+            for w in self._section_extra_widgets.get(section_key, []):
+                try:
+                    w.configure(state=state)
+                except Exception:
+                    pass
         if self._shorebird_android:
             self._on_shorebird_toggle("android", self._shorebird_android)
         if self._shorebird_ios:
@@ -520,13 +542,16 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
             version=self.version_var.get().strip(),
             build=self.build_var.get().strip(),
             recipients=self.recipients_var.get().strip() or None,
-            commit_message=self.commit_msg_var.get().strip() or "pre-release cleanup",
+            commit_message_pre=self._commit_msg_pre.get().strip() or DEFAULT_COMMIT_MESSAGE_PRE,
+            commit_message_release=self._commit_msg_release.get().strip()
+            or DEFAULT_COMMIT_MESSAGE_RELEASE,
             pub_upgrade=self._pub_mode.get() == "pub upgrade",
             android_build_mode=self._resolve_build_mode(self._shorebird_android, self._android_sb_mode),
             ios_build_mode=self._resolve_build_mode(self._shorebird_ios, self._ios_sb_mode),
             power_mode=self._power_mode.get(),
             quit_after_power=self._quit_after_power.get(),
-            git_enabled=self._git_enabled.get(),
+            git_pre_enabled=self._git_pre_enabled.get(),
+            git_post_enabled=self._git_post_enabled.get(),
             common_enabled=self._common_enabled.get(),
             android_enabled=self._android_enabled.get(),
             ios_enabled=bool(self._ios_enabled and self._ios_enabled.get()),

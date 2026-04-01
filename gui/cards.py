@@ -37,28 +37,20 @@ class CardBuilderMixin:
         version, build = read_version()
 
         ctk.CTkLabel(frame, text="Version:").grid(
-            row=1, column=0, padx=(PAD["lg"], PAD["sm"]), pady=(0, PAD["sm"]), sticky="e",
+            row=1, column=0, padx=(PAD["lg"], PAD["sm"]), pady=(0, PAD["lg"]), sticky="e",
         )
         self.version_var = ctk.StringVar(value=version)
         self._track(ctk.CTkEntry(
             frame, textvariable=self.version_var, corner_radius=RADIUS["input"], border_width=1,
-        )).grid(row=1, column=1, padx=(0, PAD["sm"]), pady=(0, PAD["sm"]), sticky="ew")
+        )).grid(row=1, column=1, padx=(0, PAD["sm"]), pady=(0, PAD["lg"]), sticky="ew")
 
         ctk.CTkLabel(frame, text="Build:").grid(
-            row=1, column=2, padx=(PAD["sm"], PAD["sm"]), pady=(0, PAD["sm"]), sticky="e",
+            row=1, column=2, padx=(PAD["sm"], PAD["sm"]), pady=(0, PAD["lg"]), sticky="e",
         )
         self.build_var = ctk.StringVar(value=build)
         self._track(ctk.CTkEntry(
             frame, textvariable=self.build_var, corner_radius=RADIUS["input"], border_width=1,
-        )).grid(row=1, column=3, padx=(0, PAD["lg"]), pady=(0, PAD["sm"]), sticky="ew")
-
-        ctk.CTkLabel(frame, text="Commit Msg:").grid(
-            row=2, column=0, padx=(PAD["lg"], PAD["sm"]), pady=(0, PAD["lg"]), sticky="e",
-        )
-        self.commit_msg_var = ctk.StringVar(value="pre-release cleanup")
-        self._track(ctk.CTkEntry(
-            frame, textvariable=self.commit_msg_var, corner_radius=RADIUS["input"], border_width=1,
-        )).grid(row=2, column=1, columnspan=3, padx=(0, PAD["lg"]), pady=(0, PAD["lg"]), sticky="ew")
+        )).grid(row=1, column=3, padx=(0, PAD["lg"]), pady=(0, PAD["lg"]), sticky="ew")
 
     # ── Common card ───────────────────────────────────────────────────────────
 
@@ -116,6 +108,7 @@ class CardBuilderMixin:
         enable_var: ctk.BooleanVar | None = None,
         shorebird_var: ctk.BooleanVar | None = None,
         shorebird_mode_var: ctk.StringVar | None = None,
+        commit_message_row: tuple[str, ctk.StringVar] | None = None,
     ) -> int:
         c = card(self.config_scroll, row=row, column=0, sticky="ew", pady=(0, 12))
         c.grid_columnconfigure(0, weight=1)
@@ -138,7 +131,22 @@ class CardBuilderMixin:
                 command=lambda sk=section_key: self._on_section_toggle(sk),
             )).grid(row=0, column=col, sticky="e")
 
-        self._build_step_rows(c, steps, section_key)
+        first_grid_row = 1
+        if commit_message_row is not None:
+            label_text, msg_var = commit_message_row
+            cm = ctk.CTkFrame(c, fg_color="transparent")
+            cm.grid(row=1, column=0, columnspan=2, sticky="ew", padx=PAD["lg"], pady=(0, PAD["sm"]))
+            cm.grid_columnconfigure(1, weight=1)
+            lbl = ctk.CTkLabel(cm, text=label_text, font=self._fonts["body_sm"])
+            lbl.grid(row=0, column=0, sticky="w")
+            ent = self._track(ctk.CTkEntry(
+                cm, textvariable=msg_var, corner_radius=RADIUS["input"], border_width=1,
+            ))
+            ent.grid(row=0, column=1, sticky="ew", padx=(PAD["sm"], 0))
+            self._section_extra_widgets.setdefault(section_key, []).extend((lbl, ent))
+            first_grid_row = 2
+
+        self._build_step_rows(c, steps, section_key, first_grid_row=first_grid_row)
         return row + 1
 
     def _add_shorebird_controls(
@@ -188,10 +196,18 @@ class CardBuilderMixin:
     # ── Step row helpers (unified: handles optional platform checkboxes) ──────
 
     def _build_step_rows(
-        self, parent: ctk.CTkFrame, steps: list[StepDef], section_key: str,
+        self,
+        parent: ctk.CTkFrame,
+        steps: list[StepDef],
+        section_key: str,
+        *,
+        first_grid_row: int = 1,
     ):
-        for i, (key, label, desc, default_on) in enumerate(steps, start=1):
-            self._add_step_row(parent, key, label, desc, default_on, section_key, i)
+        for offset, (key, label, desc, default_on) in enumerate(steps):
+            self._add_step_row(
+                parent, key, label, desc, default_on, section_key,
+                first_grid_row + offset,
+            )
 
     def _add_step_row(
         self,
