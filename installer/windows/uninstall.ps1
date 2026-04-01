@@ -20,7 +20,7 @@ $UninstallRoots = @(
 $Entry = $null
 foreach ($Pattern in $UninstallRoots) {
     $Entry = Get-ItemProperty -Path $Pattern -ErrorAction SilentlyContinue |
-        Where-Object { $_.DisplayName -eq $DisplayName } |
+        Where-Object { $_.DisplayName -like "$DisplayName*" } |
         Select-Object -First 1
     if ($Entry) {
         break

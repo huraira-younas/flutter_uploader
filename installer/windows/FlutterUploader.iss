@@ -47,6 +47,13 @@ SelectDirLabel2=Choose the folder where Setup should install [name].%n%nSetup wi
 [Files]
 Source: "..\..\dist\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\dist\{#CliExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\app\*.md"; DestDir: "{app}"; Flags: ignoreversion
+
+[Dirs]
+Name: "{app}"; Permissions: users-modify
+Name: "{app}\secrets"; Permissions: users-modify
+Name: "{app}\logs"; Permissions: users-modify
+Name: "{app}\outputs"; Permissions: users-modify
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
