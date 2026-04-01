@@ -4,10 +4,17 @@ from __future__ import annotations
 
 import sys
 import os
+from tkinter import filedialog
 
 import customtkinter as ctk
 
-from core.config_store import get_section, get_app_config, save_config
+from core.constants import set_flutter_project_root
+from core.config_store import (
+    _parse_recipients,
+    get_app_config,
+    get_section,
+    save_config,
+)
 from gui.widgets import card, scrollable_frame, section_label
 from gui.theme import (
     available_themes, get_theme, set_theme,
@@ -40,9 +47,11 @@ def _save_theme(name: str) -> None:
 
 
 class SettingsPanel(ctk.CTkFrame):
-    """Theme selection grid with live color swatch previews."""
+    """Settings: environment (paths, Drive, email) and theme picker."""
 
     _SWATCH_SIZE = 22
+    # Tight vertical rhythm; label+entry share one row — must top-align (see _row).
+    _ENV_ROW_PAD = (0, 4)
 
     def __init__(self, parent: ctk.CTkFrame, fonts: dict, app: ctk.CTk):
         super().__init__(parent, fg_color="transparent")
@@ -55,7 +64,180 @@ class SettingsPanel(ctk.CTkFrame):
     def _build(self) -> None:
         scroll = scrollable_frame(self, row=0, column=0, sticky="nsew")
 
-        outer = card(scroll, row=0, column=0, sticky="ew", pady=(0, 12))
+        env_outer = card(scroll, row=0, column=0, sticky="ew", pady=(0, 12))
+        # Wide enough label column so long labels don’t wrap into sky-tall rows (avoids centered entry gap).
+        env_outer.grid_columnconfigure(0, minsize=248, weight=0)
+        env_outer.grid_columnconfigure(1, minsize=200, weight=1)
+        env_outer.grid_columnconfigure(2, weight=0)
+
+        env_header = ctk.CTkFrame(env_outer, fg_color="transparent")
+        env_header.grid(row=0, column=0, columnspan=3, sticky="ew", padx=PAD["lg"], pady=(PAD["md"], 4))
+        env_header.grid_columnconfigure(1, weight=1)
+        section_label(env_header, "Environment", self._fonts["section"]).grid(row=0, column=0, sticky="w")
+
+        self._env_hint = ctk.CTkLabel(
+            env_header, text="", font=self._fonts["body_sm"],
+            text_color=COLORS["success"],
+        )
+        self._env_hint.grid(row=0, column=1, sticky="e", padx=(PAD["sm"], 0))
+
+        env = get_section("env")
+        app_info = get_section("app_info")
+        flutter_root = str(env.get("flutter_project_root") or app_info.get("flutter_project_root") or "").strip()
+
+        self._env_vars: dict[str, ctk.StringVar] = {
+            "flutter_project_root": ctk.StringVar(value=flutter_root),
+            "GOOGLE_DRIVE_CREDENTIALS_JSON": ctk.StringVar(value=str(env.get("GOOGLE_DRIVE_CREDENTIALS_JSON") or "")),
+            "GOOGLE_DRIVE_TOKEN_JSON": ctk.StringVar(value=str(env.get("GOOGLE_DRIVE_TOKEN_JSON") or "")),
+            "GOOGLE_DRIVE_FOLDER_ID": ctk.StringVar(value=str(env.get("GOOGLE_DRIVE_FOLDER_ID") or "")),
+            "DISTRIBUTION_EMAILS": ctk.StringVar(value=str(env.get("DISTRIBUTION_EMAILS") or "")),
+            "GMAIL_USER": ctk.StringVar(value=str(env.get("GMAIL_USER") or "")),
+            "GMAIL_APP_PASSWORD": ctk.StringVar(value=str(env.get("GMAIL_APP_PASSWORD") or "")),
+        }
+
+        def _list_to_csv(block: object) -> str:
+            if not isinstance(block, list):
+                return ""
+            return ", ".join(str(x).strip() for x in block if str(x).strip())
+
+        self._logs_distribution_var = ctk.StringVar(value=_list_to_csv(get_section("logs_distribution")))
+        self._distribution_var = ctk.StringVar(value=_list_to_csv(get_section("distribution")))
+
+        def _browse_file(key: str, *, title: str) -> None:
+            picked = filedialog.askopenfilename(title=title)
+            if picked:
+                self._env_vars[key].set(picked)
+
+        def _browse_dir(key: str) -> None:
+            picked = filedialog.askdirectory(title="Select Flutter project (contains pubspec.yaml)")
+            if picked:
+                self._env_vars[key].set(picked)
+
+        def _apply_env_to_process(values: dict[str, str]) -> None:
+            for k, v in values.items():
+                if k == "flutter_project_root":
+                    continue
+                raw = str(v).strip()
+                if raw:
+                    os.environ[k] = raw
+                else:
+                    os.environ.pop(k, None)
+
+        def _csv_to_email_list(raw: str) -> list[str]:
+            parts = [p.strip() for p in raw.replace("\n", ",").split(",") if p.strip()]
+            return _parse_recipients(parts)
+
+        def _save_env() -> None:
+            patch = {k: self._env_vars[k].get().strip() for k in self._env_vars}
+            merged = {
+                **get_app_config(),
+                "env": patch,
+                "logs_distribution": _csv_to_email_list(self._logs_distribution_var.get()),
+                "distribution": _csv_to_email_list(self._distribution_var.get()),
+            }
+            save_config(merged)
+            _apply_env_to_process(patch)
+            set_flutter_project_root(patch.get("flutter_project_root", ""))
+            self._env_hint.configure(text="Saved")
+            self._app.after(1500, lambda: self._env_hint.configure(text=""))
+
+        er = 1
+
+        def _subsection(title: str) -> None:
+            nonlocal er
+            ctk.CTkLabel(
+                env_outer, text=title, font=self._fonts["body_sm"],
+                text_color=COLORS["muted"],
+            ).grid(row=er, column=0, columnspan=3, sticky="w", padx=PAD["lg"], pady=(10, 4))
+            er += 1
+
+        def _row(label: str, key: str, *, is_secret: bool = False, browse: str | None = None) -> None:
+            nonlocal er
+            ctk.CTkLabel(
+                env_outer,
+                text=label,
+                font=self._fonts["body_sm"],
+                anchor="w",
+                justify="left",
+            ).grid(
+                row=er, column=0, padx=(PAD["lg"], PAD["sm"]), pady=self._ENV_ROW_PAD, sticky="nw",
+            )
+            entry = ctk.CTkEntry(
+                env_outer,
+                textvariable=self._env_vars[key],
+                corner_radius=RADIUS["input"],
+                border_width=1,
+                height=28,
+                show="•" if is_secret else None,
+            )
+            # sticky=new: keep entry top-aligned if label wraps to multiple lines (ew alone centers vertically).
+            entry.grid(row=er, column=1, padx=(0, PAD["sm"]), pady=self._ENV_ROW_PAD, sticky="new")
+            if browse == "file":
+                ctk.CTkButton(
+                    env_outer, text="Browse", width=88, corner_radius=RADIUS["btn"],
+                    command=lambda k=key, t=label: _browse_file(k, title=t),
+                ).grid(row=er, column=2, padx=(0, PAD["lg"]), pady=self._ENV_ROW_PAD, sticky="ne")
+            elif browse == "dir":
+                ctk.CTkButton(
+                    env_outer, text="Browse", width=88, corner_radius=RADIUS["btn"],
+                    command=lambda: _browse_dir("flutter_project_root"),
+                ).grid(row=er, column=2, padx=(0, PAD["lg"]), pady=self._ENV_ROW_PAD, sticky="ne")
+            else:
+                ctk.CTkFrame(env_outer, fg_color="transparent", width=88, height=1).grid(
+                    row=er, column=2, padx=(0, PAD["lg"]), pady=self._ENV_ROW_PAD, sticky="nw",
+                )
+            er += 1
+
+        def _row_var(label: str, var: ctk.StringVar, *, is_secret: bool = False) -> None:
+            nonlocal er
+            ctk.CTkLabel(
+                env_outer,
+                text=label,
+                font=self._fonts["body_sm"],
+                anchor="w",
+                justify="left",
+            ).grid(
+                row=er, column=0, padx=(PAD["lg"], PAD["sm"]), pady=self._ENV_ROW_PAD, sticky="nw",
+            )
+            entry = ctk.CTkEntry(
+                env_outer,
+                textvariable=var,
+                corner_radius=RADIUS["input"],
+                border_width=1,
+                height=28,
+                show="•" if is_secret else None,
+            )
+            # Same grid as ``_row`` without Browse: entry only in column 1, spacer column 2 — matches Env fallback width.
+            entry.grid(row=er, column=1, padx=(0, PAD["sm"]), pady=self._ENV_ROW_PAD, sticky="new")
+            ctk.CTkFrame(env_outer, fg_color="transparent", width=88, height=1).grid(
+                row=er, column=2, padx=(0, PAD["lg"]), pady=self._ENV_ROW_PAD, sticky="nw",
+            )
+            er += 1
+
+        _subsection("Project")
+        _row("Flutter project root", "flutter_project_root", browse="dir")
+        _subsection("Google Drive")
+        _row("OAuth client JSON", "GOOGLE_DRIVE_CREDENTIALS_JSON", browse="file")
+        _row("Token JSON (optional)", "GOOGLE_DRIVE_TOKEN_JSON", browse="file")
+        _row("Parent folder ID (optional)", "GOOGLE_DRIVE_FOLDER_ID")
+        _subsection("Email")
+        _row("Gmail address", "GMAIL_USER")
+        _row("Gmail app password", "GMAIL_APP_PASSWORD", is_secret=True)
+        _subsection("Logs | Distribution")
+        _row_var("Logs (build reports, comma-separated)", self._logs_distribution_var)
+        _row_var("Distribution (Drive links, comma-separated)", self._distribution_var)
+        _row("Env fallback emails (optional, comma-separated)", "DISTRIBUTION_EMAILS")
+
+        ctk.CTkButton(
+            env_outer,
+            text="Save environment",
+            corner_radius=RADIUS["btn"],
+            fg_color=COLORS["accent"],
+            hover_color=COLORS["accent_hover"],
+            command=_save_env,
+        ).grid(row=er, column=0, columnspan=3, sticky="e", padx=PAD["lg"], pady=(8, PAD["md"]))
+
+        outer = card(scroll, row=1, column=0, sticky="ew", pady=(0, 12))
         outer.grid_columnconfigure(0, weight=1)
 
         header = ctk.CTkFrame(outer, fg_color="transparent")

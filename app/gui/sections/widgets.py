@@ -17,6 +17,34 @@ def build_card(parent: ctk.CTkFrame, row: int) -> ctk.CTkFrame:
     return c
 
 
+def build_prereq_banner(
+    parent: ctk.CTkFrame,
+    *,
+    message: str,
+    fonts: dict[str, ctk.CTkFont],
+    tone: str = "danger",
+    row: int,
+) -> None:
+    color = COLORS.get(tone, COLORS["danger"])
+    ctk.CTkLabel(
+        parent,
+        text=message,
+        font=fonts["body_sm"],
+        text_color=color,
+        wraplength=720,
+        justify="left",
+        anchor="w",
+    ).grid(row=row, column=0, columnspan=2, sticky="ew", padx=PAD["lg"], pady=(PAD["md"], PAD["sm"]))
+
+
+def disable_section_widgets(app: ConfigPanelHost, section_key: str) -> None:
+    for w in app._section_widgets.get(section_key, []):
+        try:
+            w.configure(state="disabled")
+        except Exception:
+            pass
+
+
 def build_section_header(
     parent: ctk.CTkFrame,
     *,
@@ -25,9 +53,10 @@ def build_section_header(
     section_key: str,
     app: ConfigPanelHost,
     shorebird_bundle: tuple[ctk.BooleanVar, ctk.StringVar | None] | None = None,
+    header_row: int = 0,
 ) -> None:
     header = ctk.CTkFrame(parent, fg_color="transparent")
-    header.grid(row=0, column=0, columnspan=2, sticky="ew", padx=PAD["lg"], pady=(PAD["md"], 5))
+    header.grid(row=header_row, column=0, columnspan=2, sticky="ew", padx=PAD["lg"], pady=(PAD["md"], 5))
     header.grid_columnconfigure(0, weight=1)
     section_label(header, title, fonts["section"]).grid(row=0, column=0, sticky="w")
 
@@ -38,7 +67,7 @@ def build_section_header(
 
     enabled_var = app.section_enabled_vars.get(section_key)
     if enabled_var is not None:
-        app._track(ctk.CTkSwitch(
+        app._track_section(section_key, ctk.CTkSwitch(
             header,
             text="Enabled",
             variable=enabled_var,

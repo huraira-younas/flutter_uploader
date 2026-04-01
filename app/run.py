@@ -139,7 +139,7 @@ def _run_cli(args: argparse.Namespace) -> None:
     )
     from helpers.platform_utils import is_macos
     from helpers.build_report import send_build_report
-    from helpers.version import read_version, write_version
+    from helpers.version import write_version
     from helpers.shell import terminate_active_processes
     from helpers.types import fmt_elapsed
     from core.run import run_selected

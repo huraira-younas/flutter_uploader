@@ -7,7 +7,7 @@ import customtkinter as ctk
 from core.constants import DEFAULT_GMAIL_RECIPIENTS
 from gui.sections.contracts import ConfigPanelHost
 from gui.widgets import card, section_label
-from core.config_store import get_section
+from core.config_store import env_value, get_section
 from gui.theme import COLORS, PAD, RADIUS
 
 
@@ -31,13 +31,28 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
     frame = card(scroll, row=row, column=0, sticky="ew", pady=(0, 12))
     frame.grid_columnconfigure(0, weight=1)
 
+    r = 0
+    if not env_value("GMAIL_USER") or not env_value("GMAIL_APP_PASSWORD"):
+        ctk.CTkLabel(
+            frame,
+            text="Gmail is not configured in Settings → Environment. Build report and Drive-link emails will be skipped until you add Gmail user and app password.",
+            font=app._fonts["body_sm"],
+            text_color=COLORS["warn"],
+            wraplength=720,
+            justify="left",
+            anchor="w",
+        ).grid(row=r, column=0, sticky="ew", padx=PAD["lg"], pady=(PAD["md"], PAD["sm"]))
+        r += 1
+
     section_label(frame, "Distribution", app._fonts["section"]).grid(
-        row=0, column=0, sticky="w", padx=PAD["lg"], pady=(PAD["md"], 5),
+        row=r, column=0, sticky="w", padx=PAD["lg"], pady=(PAD["md"], 5),
     )
+    r += 1
     ctk.CTkLabel(
         frame, text="Preset Recipient Emails:",
         font=app._fonts["body_sm"], text_color=COLORS["muted"],
-    ).grid(row=1, column=0, sticky="w", padx=PAD["lg"], pady=(0, PAD["sm"]))
+    ).grid(row=r, column=0, sticky="w", padx=PAD["lg"], pady=(0, PAD["sm"]))
+    r += 1
 
     current_emails = [str(v).strip() for v in state] if isinstance(state, list) else []
     current_emails = [v for v in current_emails if v]
@@ -45,7 +60,7 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
     preset_emails = DEFAULT_GMAIL_RECIPIENTS[:] if DEFAULT_GMAIL_RECIPIENTS else current_emails
     selected_defaults = {email.lower() for email in current_emails} if current_emails else {email.lower() for email in preset_emails}
 
-    row_idx = 2
+    row_idx = r
     preset_vars: list[tuple[str, ctk.BooleanVar]] = []
     app.recipients_var = ctk.StringVar(value="")
     preset_set = {email.lower() for email in preset_emails}
@@ -61,7 +76,7 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
     for email in preset_emails:
         var = ctk.BooleanVar(value=email.lower() in selected_defaults)
         preset_vars.append((email, var))
-        app._track(ctk.CTkCheckBox(
+        app._track_section("distribution", ctk.CTkCheckBox(
             frame,
             text=email,
             variable=var,
@@ -80,7 +95,7 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
     ).grid(row=row_idx, column=0, sticky="w", padx=PAD["lg"], pady=(PAD["sm"], PAD["sm"]))
     row_idx += 1
 
-    app._track(ctk.CTkEntry(
+    app._track_section("distribution", ctk.CTkEntry(
         frame, textvariable=extra_var,
         corner_radius=RADIUS["input"], border_width=1,
     )).grid(row=row_idx, column=0, sticky="ew", padx=PAD["lg"], pady=(0, PAD["lg"]))

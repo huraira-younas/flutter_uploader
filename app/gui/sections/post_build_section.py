@@ -7,6 +7,7 @@ import customtkinter as ctk
 from gui.sections.contracts import ConfigPanelHost
 from core.config_store import get_section
 from gui.widgets import segmented_button
+from gui.sections import prerequisites as P
 from gui.sections import widgets as W
 from core.steps import POST_STEPS
 from gui.theme import PAD
@@ -23,16 +24,27 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
 
     overrides = W.step_var_overrides(list(POST_STEPS), state)
 
+    ok, msg = P.flutter_project_prereq_status()
+    off = 0
     c = W.build_card(scroll, row)
+    if not ok:
+        W.build_prereq_banner(c, row=off, message=msg, fonts=app._fonts)
+        off += 1
+    dw = P.drive_upload_warning()
+    if dw:
+        W.build_prereq_banner(c, row=off, message=dw, fonts=app._fonts, tone="warn")
+        off += 1
     W.build_section_header(
         c, title="Post-Build", fonts=app._fonts,
-        section_key="post", app=app,
+        section_key="post", app=app, header_row=off,
     )
     W.build_step_rows_from_defs(
         c, app=app, section_key="post", steps=list(POST_STEPS),
-        first_grid_row=1, step_var_overrides=overrides,
+        first_grid_row=1 + off, step_var_overrides=overrides,
         trailing_widgets_by_key={"shutdown": _shutdown_controls(app)},
     )
+    if not ok:
+        W.disable_section_widgets(app, "post")
 
     def _serialize() -> dict:
         return {

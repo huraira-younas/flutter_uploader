@@ -1,20 +1,8 @@
 from pathlib import Path
+import json
+import sys
 import os
 import re
-import sys
-
-from core.steps import (
-    GIT_POST_SECTION_STEPS,
-    COMMIT_PRE_STEPS,
-    GIT_POST_STEPS,
-    GIT_SYNC_STEPS,
-    ANDROID_STEPS,
-    COMMON_STEPS,
-    POST_STEPS,
-    StepResult,
-    IOS_STEPS,
-    StepDef,
-)
 
 
 APP_TITLE = "Flutter Uploader"
@@ -35,6 +23,9 @@ else:
     UPLOADER_DIR = Path(__file__).resolve().parents[1]
 
 
+# Repo root (parent of ``app/``) — ``README.md`` lives here; app-level docs stay under ``UPLOADER_DIR``.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+
 _dotenv_loaded = False
 _flutter_project_root: Path | None = None
 
@@ -52,15 +43,27 @@ def load_dotenv_files() -> None:
 
 
 def require_flutter_project_root() -> Path:
-    """Resolve FLUTTER_PROJECT_ROOT from environment (cached after first success)."""
+    """Resolve FLUTTER_PROJECT_ROOT from env or persisted config (cached after first success)."""
     global _flutter_project_root
     if _flutter_project_root is not None:
         return _flutter_project_root
+
     raw = os.environ.get("FLUTTER_PROJECT_ROOT", "").strip()
     if not raw:
+        try:
+            cfg_path = UPLOADER_DIR / "config.json"
+            if cfg_path.is_file():
+                saved = json.loads(cfg_path.read_text(encoding="utf-8") or "{}")
+                raw = str(((saved.get("env") or {}).get("flutter_project_root") or "")).strip()
+                if not raw:
+                    raw = str(((saved.get("app_info") or {}).get("flutter_project_root") or "")).strip()
+        except (OSError, json.JSONDecodeError, AttributeError):
+            raw = ""
+
+    if not raw:
         print(
-            "Error: FLUTTER_PROJECT_ROOT is required. In .env set it to the directory that "
-            "contains pubspec.yaml — where builds and git commands should run.\n",
+            "Error: FLUTTER_PROJECT_ROOT is required. Set Flutter project root in Settings → Environment "
+            "or in .env next to the executable.\n",
             file=sys.stderr,
         )
         raise SystemExit(1)
@@ -79,6 +82,17 @@ def flutter_project_root() -> Path:
     return require_flutter_project_root()
 
 
+def set_flutter_project_root(raw: str) -> None:
+    """Update the active project root for the running process."""
+    global _flutter_project_root
+    s = str(raw).strip()
+    if s:
+        os.environ["FLUTTER_PROJECT_ROOT"] = s
+    else:
+        os.environ.pop("FLUTTER_PROJECT_ROOT", None)
+    _flutter_project_root = None
+
+
 def apk_dir() -> Path:
     return require_flutter_project_root() / "build" / "app" / "outputs" / "flutter-apk"
 
@@ -88,7 +102,7 @@ def ipa_dir() -> Path:
 
 CLI_REFERENCE_PATH = UPLOADER_DIR / "CLI_REFERENCE.md"
 ENVIRONMENT_PATH = UPLOADER_DIR / "ENVIRONMENT.md"
-README_PATH = UPLOADER_DIR / "README.md"
+README_PATH = (UPLOADER_DIR / "README.md") if getattr(sys, "frozen", False) else (_REPO_ROOT / "README.md")
 
 def pubspec_path() -> Path:
     return require_flutter_project_root() / "pubspec.yaml"

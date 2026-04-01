@@ -11,7 +11,6 @@ from email import encoders
 from pathlib import Path
 from html import escape
 import smtplib
-import os
 
 from core.constants import (
     REPORT_BODY_OPEN, REPORT_BODY_CLOSE, REPORT_BORDER_LR,
@@ -22,6 +21,7 @@ from core.constants import (
     REPORT_SECTION,
 )
 from core.steps import StepResult
+from core.config_store import build_report_recipients_from_config, env_value
 
 from helpers.types import LogFn, fmt_elapsed
 
@@ -83,17 +83,9 @@ def _section_heading(title: str) -> str:
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-def _get_primary_recipient() -> str | None:
-    raw = os.environ.get("DISTRIBUTION_EMAILS", "").strip()
-    if not raw:
-        return None
-    first = raw.split(",")[0].strip()
-    return first if "@" in first else None
-
-
 def _gmail_credentials() -> tuple[str, str] | None:
-    user = os.environ.get("GMAIL_USER", "").strip()
-    pw = os.environ.get("GMAIL_APP_PASSWORD", "").strip()
+    user = env_value("GMAIL_USER")
+    pw = env_value("GMAIL_APP_PASSWORD")
     return (user, pw) if user and pw else None
 
 
@@ -280,13 +272,13 @@ def send_build_report(
     success: bool,
     log: LogFn,
 ) -> None:
-    """Save log file and email HTML build report to the primary recipient."""
+    """Save log file and email HTML build report to ``logs_distribution`` (or DISTRIBUTION_EMAILS fallback)."""
     log_path = save_log(log_lines, version, build)
     log(f"Build log saved → {log_path}\n")
 
-    recipient = _get_primary_recipient()
-    if not recipient:
-        log("No DISTRIBUTION_EMAILS configured; skipping report email.\n")
+    recipients = build_report_recipients_from_config()
+    if not recipients:
+        log("No build-report recipients: add logs_distribution in config.json or DISTRIBUTION_EMAILS in Settings. Skipping report email.\n")
         return
 
     creds = _gmail_credentials()
@@ -310,12 +302,12 @@ def send_build_report(
         _send_html_email(
             subject=subject,
             html=html,
-            recipients=[recipient],
+            recipients=recipients,
             gmail_user=creds[0],
             gmail_pass=creds[1],
             attachment_path=log_path,
         )
-        log(f"Build report emailed to {recipient}\n")
+        log(f"Build report emailed to {', '.join(recipients)}\n")
     except Exception as e:
         log(f"Failed to email build report: {e}\n")
 

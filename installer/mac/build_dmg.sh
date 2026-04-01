@@ -38,6 +38,8 @@ rm -rf "${STAGING_DIR}"
 mkdir -p "${STAGING_DIR}"
 cp -R "${APP_PATH}" "${STAGING_DIR}/"
 ln -s /Applications "${STAGING_DIR}/Applications"
+cp "${ROOT_DIR}/installer/mac/uninstall.sh" "${STAGING_DIR}/Uninstall.command"
+chmod +x "${STAGING_DIR}/Uninstall.command"
 
 # Simple DMG creation (unsigned). For distribution outside your machine, you'll want codesign+notarize.
 TMP_DMG="${DMG_DIR}/_tmp_flutter_uploader.dmg"

@@ -24,6 +24,16 @@ Output goes to `dist-installer/FlutterUploader-Setup.exe`.
 - Adds Start Menu entry
 - Optionally launches the app on finish
 
+**Uninstall (Windows)**
+
+- **Settings → Apps** (or Control Panel → Programs): uninstall **Flutter Uploader**, or
+- Start Menu folder **Flutter Uploader → Uninstall Flutter Uploader**, or
+- From the repo (or copy the script next to the user):  
+  `.\installer\windows\uninstall.ps1`  
+  Add `-Silent` for a quiet uninstall.
+
+The installer also removes `config.json`, `.env`, `logs\`, and `outputs\` under the install folder when uninstalling.
+
 ### Windows code signing (optional but recommended)
 
 - With a code signing cert, you can sign the generated `FlutterUploader-Setup.exe` (and/or `dist\FlutterUploader.exe`) to reduce SmartScreen warnings.
@@ -50,6 +60,13 @@ Output goes to `dist-installer/FlutterUploader.dmg`.
 - Opens the DMG
 - Drags `FlutterUploader.app` to **Applications** (shortcut included in the DMG)
 - Launches from Applications (or Spotlight)
+
+**Uninstall (macOS)**
+
+- Open the DMG (or keep a copy of **`Uninstall.command`** from the disk image) and double-click **Uninstall.command**, or
+- From a terminal: `./installer/mac/uninstall.sh`
+
+These remove `FlutterUploader.app` from `/Applications` and `~/Applications` if present.
 
 ### macOS signing + notarization (recommended for distribution)
 

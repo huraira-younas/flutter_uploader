@@ -1,6 +1,5 @@
 """Upload ``outputs/`` to Google Drive (OAuth user credentials)."""
 
-import os
 from pathlib import Path
 
 from core.constants import (
@@ -12,6 +11,7 @@ from core.constants import (
     OUTPUTS_DIR,
     MIME_MAP,
 )
+from core.config_store import env_value
 from helpers.types import LogFn, StopCheckFn
 
 
@@ -23,7 +23,7 @@ def _resolve_env_path(raw: str) -> Path:
 
 
 def _parse_recipients(recipients: str | None) -> list[str]:
-    raw = (recipients or "").strip() or os.environ.get("DISTRIBUTION_EMAILS", "")
+    raw = (recipients or "").strip() or env_value("DISTRIBUTION_EMAILS")
     if not raw:
         return list(DEFAULT_GMAIL_RECIPIENTS)
     return [e.strip() for e in raw.split(",") if e.strip() and "@" in e.strip()]
@@ -106,13 +106,13 @@ def upload_outputs_to_drive(
         log("No files found in outputs to upload.\n")
         return True
 
-    creds_path_str = os.environ.get("GOOGLE_DRIVE_CREDENTIALS_JSON", "").strip()
+    creds_path_str = env_value("GOOGLE_DRIVE_CREDENTIALS_JSON")
     creds_path = _resolve_env_path(creds_path_str) if creds_path_str else Path()
     if not creds_path_str or not creds_path.is_file():
         log("Drive: set GOOGLE_DRIVE_CREDENTIALS_JSON. Skipping upload.\n")
         return True
 
-    token_path_str = os.environ.get("GOOGLE_DRIVE_TOKEN_JSON", "").strip()
+    token_path_str = env_value("GOOGLE_DRIVE_TOKEN_JSON")
     token_path = (
         _resolve_env_path(token_path_str)
         if token_path_str
@@ -133,7 +133,7 @@ def upload_outputs_to_drive(
         log(f"Drive: failed to authenticate: {e}\n")
         return False
 
-    parent_folder_id = os.environ.get("GOOGLE_DRIVE_FOLDER_ID", "").strip() or None
+    parent_folder_id = env_value("GOOGLE_DRIVE_FOLDER_ID") or None
     version_tag = f" v{version}+{build}" if version and build else ""
     folder_name = f"ReelStay{version_tag}"
 

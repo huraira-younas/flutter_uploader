@@ -6,13 +6,16 @@ from collections.abc import Callable
 import customtkinter as ctk
 
 from core.config_store import (
-    deep_merge,
+    resolved_flutter_project_root_string,
+    PIPELINE_SECTION_TO_CONFIG_SECTION,
     get_app_config,
     save_config,
-    PIPELINE_SECTION_TO_CONFIG_SECTION,
+    deep_merge,
 )
-from gui.sections.contracts import ConfigPanelHost
+
 from . import android_section, app_info, common_section, distribution_section, ios_section, post_build_section, post_git, pre_git
+from core.constants import set_flutter_project_root
+from gui.sections.contracts import ConfigPanelHost
 
 
 _SECTION_MOUNTS: tuple[tuple[str, Callable[[ConfigPanelHost, ctk.CTkScrollableFrame, int], int]], ...] = (
@@ -29,7 +32,7 @@ def mount_config_panel(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame) -> 
     app._gui_config_serializers.clear()
     row = 0
     row = app_info.mount(app, scroll, row)
-    for section_key, mount_fn in _SECTION_MOUNTS:
+    for _, mount_fn in _SECTION_MOUNTS:
         row = mount_fn(app, scroll, row)
     row = distribution_section.mount(app, scroll, row)
 
@@ -47,3 +50,4 @@ def collect_gui_config(app: ConfigPanelHost) -> dict:
 
 def persist_gui_config(app: ConfigPanelHost) -> None:
     save_config(collect_gui_config(app))
+    set_flutter_project_root(resolved_flutter_project_root_string())

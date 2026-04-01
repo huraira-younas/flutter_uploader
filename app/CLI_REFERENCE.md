@@ -4,7 +4,7 @@ Run **`python3 run.py`** from this repository. Same content under **Read Me → 
 
 Headless runs need **`--cli`** (otherwise the GUI opens and run flags are ignored). **`--list-steps`** and **`--no-install`** work without `--cli`.
 
-Set **`FLUTTER_PROJECT_ROOT`** in `.env` to the Flutter project to build. See [`ENVIRONMENT.md`](ENVIRONMENT.md).
+Set the Flutter project root in the GUI (**App Info → Flutter project root**), or set **`FLUTTER_PROJECT_ROOT`** in `.env` to override for a run. See [`ENVIRONMENT.md`](ENVIRONMENT.md).
 
 ---
 

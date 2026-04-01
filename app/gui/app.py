@@ -88,6 +88,7 @@ class BuildApp(ctk.CTk):
             "android": [],
             "ios": [],
             "post": [],
+            "distribution": [],
         }
         self._section_var_snapshots: dict[str, list[bool]] = {}
         self._section_bool_vars: dict[str, list[ctk.BooleanVar]] = {

@@ -1,4 +1,4 @@
-"""App Info section — version and build fields only."""
+"""App Info section — version and build fields."""
 
 from __future__ import annotations
 
@@ -42,7 +42,11 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
     )).grid(row=1, column=3, padx=(0, PAD["lg"]), pady=(0, PAD["lg"]), sticky="ew")
 
     def _serialize_app_info() -> dict:
+        chunk = get_section("app_info")
+        base = dict(chunk) if isinstance(chunk, dict) else {}
+        base.pop("flutter_project_root", None)
         return {
+            **base,
             "version": app.version_var.get().strip(),
             "build": app.build_var.get().strip(),
         }

@@ -7,6 +7,7 @@ import customtkinter as ctk
 from gui.sections.contracts import ConfigPanelHost
 from core.config_store import get_section
 from gui.widgets import segmented_button
+from gui.sections import prerequisites as P
 from gui.sections import widgets as W
 from core.steps import COMMON_STEPS
 from gui.theme import PAD
@@ -21,14 +22,18 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
 
     overrides = W.step_var_overrides(list(COMMON_STEPS), state)
 
+    ok, msg = P.flutter_project_prereq_status()
+    off = 1 if not ok else 0
     c = W.build_card(scroll, row)
+    if not ok:
+        W.build_prereq_banner(c, row=0, message=msg, fonts=app._fonts)
     W.build_section_header(
         c, title="Common", fonts=app._fonts,
-        section_key="common", app=app,
+        section_key="common", app=app, header_row=off,
     )
 
     for offset, (key, label, desc, _def) in enumerate(COMMON_STEPS):
-        grid_r = 1 + offset
+        grid_r = 1 + offset + off
         if key == "pub_get":
             _build_pub_row(app, c, grid_row=grid_r, pub_var=overrides[key])
         else:
@@ -38,6 +43,8 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
                 grid_row=grid_r, default_on=_def,
                 var=overrides[key],
             )
+    if not ok:
+        W.disable_section_widgets(app, "common")
 
     def _serialize() -> dict:
         return {

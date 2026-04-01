@@ -1,8 +1,10 @@
 # Environment
 
-Copy **`.env.example`** → **`.env`** next to `run.py`. Do not commit `.env`.
+Copy **`.env.example`** → **`.env`** next to `run.py` (optional). Do not commit `.env`.
 
-**`FLUTTER_PROJECT_ROOT`** — absolute path to the Flutter project this app runs pipelines against (directory that contains `pubspec.yaml`). Logs and `outputs/` stay in this Python app’s folder.
+**Flutter project root** — absolute path to the Flutter project this app runs pipelines against (directory that contains `pubspec.yaml`). You can set it in the GUI (**App Info → Flutter project root**) which saves to `config.json` as `app_info.flutter_project_root`.
+
+If you also set **`FLUTTER_PROJECT_ROOT`** in `.env`, it will override the saved config for that run.
 
 **Theme** — the selected GUI theme is saved in `config.json` under `app_info.theme`.
 
@@ -14,7 +16,7 @@ Copy **`.env.example`** → **`.env`** next to `run.py`. Do not commit `.env`.
 
 | Variable | Notes |
 |:---|:---|
-| `FLUTTER_PROJECT_ROOT` | **Required** · path to Flutter project (`pubspec.yaml`) |
+| `FLUTTER_PROJECT_ROOT` | Optional override · path to Flutter project (`pubspec.yaml`) |
 | `GOOGLE_DRIVE_CREDENTIALS_JSON` | OAuth Desktop client JSON (path; relative paths are from this app directory) |
 | `GOOGLE_DRIVE_TOKEN_JSON` | Optional · default `gdrive_token.json` beside the client secret |
 | `GOOGLE_DRIVE_FOLDER_ID` | Optional Drive folder ID |

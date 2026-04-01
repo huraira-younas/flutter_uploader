@@ -28,6 +28,7 @@ OutputBaseFilename=FlutterUploader-Setup
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
+UninstallDisplayIcon={app}\{#AppExeName}
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -44,10 +45,18 @@ Source: "..\..\app\.env.example"; DestDir: "{app}"; Flags: ignoreversion
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
 Name: "{commondesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 Name: "{group}\{#AppName} (CLI)"; Filename: "{cmd}"; Parameters: "/k """"{app}\{#CliExeName}"""""; WorkingDir: "{app}"
+Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a &Desktop shortcut"; GroupDescription: "Additional icons:"; Flags: checkedonce
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; Flags: nowait postinstall skipifsilent
+
+[UninstallDelete]
+; Runtime files next to the exes (see app/core/constants.py frozen UPLOADER_DIR)
+Type: files; Name: "{app}\config.json"
+Type: files; Name: "{app}\.env"
+Type: filesandordirs; Name: "{app}\logs"
+Type: filesandordirs; Name: "{app}\outputs"
 

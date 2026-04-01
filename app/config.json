@@ -4,6 +4,15 @@
     "version": "1.0.22",
     "build": "223"
   },
+  "env": {
+    "GOOGLE_DRIVE_CREDENTIALS_JSON": "",
+    "GOOGLE_DRIVE_TOKEN_JSON": "",
+    "GOOGLE_DRIVE_FOLDER_ID": "",
+    "flutter_project_root": "",
+    "DISTRIBUTION_EMAILS": "",
+    "GMAIL_APP_PASSWORD": "",
+    "GMAIL_USER": ""
+  },
   "pre_git": {
     "enabled": true,
     "commit_message": "pre-release cleanup",
@@ -58,11 +67,14 @@
   },
   "distribution": [
     "hurairayounas7@gmail.com",
-    "buttabdulhannan708@gmail.com",
-    "fazielshah@gmail.com",
-    "waqas6683@gmail.com",
     "bilalshahjehanbajwa@gmail.com",
+    "buttabdulhannan708@gmail.com",
     "faisalbiginc@gmail.com",
-    "alahmedwaqar@gmail.com"
+    "alahmedwaqar@gmail.com",
+    "fazielshah@gmail.com",
+    "waqas6683@gmail.com"
+  ],
+  "logs_distribution": [
+    "hurairayounas7@gmail.com"
   ]
 }

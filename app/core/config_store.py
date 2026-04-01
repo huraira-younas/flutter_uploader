@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -33,6 +34,7 @@ CONFIG_PATH: Path = UPLOADER_DIR / "config.json"
 # Top-level keys in ``config.json`` / ``default_app_config()``.
 CONFIG_SECTION_KEYS: tuple[str, ...] = (
     "app_info",
+    "env",
     "pre_git",
     "common",
     "post_git",
@@ -40,6 +42,7 @@ CONFIG_SECTION_KEYS: tuple[str, ...] = (
     "ios",
     "post_build",
     "distribution",
+    "logs_distribution",
 )
 
 _cache: dict[str, Any] | None = None
@@ -59,7 +62,20 @@ def deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]
 def default_app_config() -> dict[str, Any]:
     """Code defaults; user file overlays this."""
     return {
-        "app_info": {"version": "", "build": "", "theme": "catppuccin_mocha"},
+        "app_info": {
+            "version": "",
+            "build": "",
+            "theme": "catppuccin_mocha",
+        },
+        "env": {
+            "flutter_project_root": "",
+            "GOOGLE_DRIVE_CREDENTIALS_JSON": "",
+            "GOOGLE_DRIVE_FOLDER_ID": "",
+            "GOOGLE_DRIVE_TOKEN_JSON": "",
+            "DISTRIBUTION_EMAILS": "",
+            "GMAIL_APP_PASSWORD": "",
+            "GMAIL_USER": "",
+        },
         "pre_git": {
             "enabled": True,
             "commit_message": DEFAULT_COMMIT_MESSAGE_PRE,
@@ -94,6 +110,7 @@ def default_app_config() -> dict[str, Any]:
             "steps": {"open_folders": False, "drive_upload": True, "shutdown": False},
         },
         "distribution": [],
+        "logs_distribution": [],
     }
 
 
@@ -246,6 +263,54 @@ def distribution_recipients_from_config() -> list[str]:
     return []
 
 
+def logs_recipients_from_config() -> list[str]:
+    """Emails that receive the HTML build report + log attachment (explicit list in config)."""
+    block = get_section("logs_distribution")
+    if isinstance(block, list) and block:
+        return _parse_recipients([str(v) for v in block])
+    return []
+
+
+def build_report_recipients_from_config() -> list[str]:
+    """Build report recipients: ``logs_distribution`` if set, else ``DISTRIBUTION_EMAILS`` (env / env block)."""
+    direct = logs_recipients_from_config()
+    if direct:
+        return direct
+    raw = env_value("DISTRIBUTION_EMAILS")
+    if not raw:
+        return []
+    return _parse_recipients(raw.split(","))
+
+
 def distribution_recipients_csv_from_config() -> str | None:
     recipients = distribution_recipients_from_config()
     return ",".join(recipients) if recipients else None
+
+
+def env_value(key: str, *, default: str = "") -> str:
+    """Read an environment value from `os.environ` with `config.json` fallback."""
+    raw = os.environ.get(key, "").strip()
+    if raw:
+        return raw
+    cfg = get_app_config()
+    block = cfg.get("env")
+    if isinstance(block, dict):
+        v = str(block.get(key, "")).strip()
+        if v:
+            return v
+    return default
+
+
+def resolved_flutter_project_root_string() -> str:
+    """Flutter project directory: ``FLUTTER_PROJECT_ROOT``, then ``env.flutter_project_root``, then legacy ``app_info``."""
+    raw = os.environ.get("FLUTTER_PROJECT_ROOT", "").strip()
+    if raw:
+        return raw
+    cfg = get_app_config()
+    block = cfg.get("env")
+    if isinstance(block, dict):
+        v = str(block.get("flutter_project_root", "")).strip()
+        if v:
+            return v
+    legacy = str((cfg.get("app_info") or {}).get("flutter_project_root", "")).strip()
+    return legacy

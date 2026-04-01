@@ -6,6 +6,7 @@ import customtkinter as ctk
 
 from gui.sections.contracts import ConfigPanelHost
 from core.config_store import get_section
+from gui.sections import prerequisites as P
 from gui.sections import widgets as W
 from core.steps import IOS_STEPS
 
@@ -22,16 +23,23 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
 
     overrides = W.step_var_overrides(list(IOS_STEPS), state)
 
+    ok, msg = P.ios_prereq_status(app)
+    off = 1 if not ok else 0
     c = W.build_card(scroll, row)
+    if not ok:
+        W.build_prereq_banner(c, row=0, message=msg, fonts=app._fonts)
     W.build_section_header(
         c, title="iOS Build", fonts=app._fonts,
         section_key="ios", app=app,
         shorebird_bundle=(app._shorebird_ios, app._ios_sb_mode),
+        header_row=off,
     )
     W.build_step_rows_from_defs(
         c, app=app, section_key="ios", steps=list(IOS_STEPS),
-        first_grid_row=1, step_var_overrides=overrides,
+        first_grid_row=1 + off, step_var_overrides=overrides,
     )
+    if not ok:
+        W.disable_section_widgets(app, "ios")
 
     def _serialize() -> dict:
         return {
