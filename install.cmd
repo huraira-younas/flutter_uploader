@@ -2,30 +2,13 @@
 setlocal
 cd /d "%~dp0"
 
-echo Flutter Uploader - Windows Installer Build
+echo Flutter Uploader - Windows full build (app + installer wizard)
 echo.
-echo Step 1: Building app binaries...
+echo End users only run the generated FlutterUploader-Setup.exe - they never install Inno Setup.
 echo.
+
 powershell -NoProfile -ExecutionPolicy Bypass -File "installer\scripts\build_win.ps1"
-
-echo.
-echo Step 2: Creating installer EXE with Inno Setup...
-echo.
-
-where ISCC.exe >nul 2>&1 && (
-    ISCC.exe installer\windows\FlutterUploader.iss
-) || (
-    if exist "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" (
-        "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\windows\FlutterUploader.iss
-    ) else (
-        echo.
-        echo Inno Setup not found. Install it from https://jrsoftware.org/isinfo.php
-        echo Then compile manually:
-        echo   "C:\Program Files ^(x86^)\Inno Setup 6\ISCC.exe" installer\windows\FlutterUploader.iss
-        echo.
-        echo Binaries are ready in dist\
-    )
-)
+if errorlevel 1 exit /b 1
 
 if exist .venv (
     echo.
@@ -34,6 +17,8 @@ if exist .venv (
 )
 
 echo.
-echo Done! Installer: dist-installer\FlutterUploader-Setup.exe
+echo Done.
+echo   App:        dist\FlutterUploader.exe
+echo   Installer:  dist-installer\FlutterUploader-Setup.exe  (single-click wizard for users)
 echo.
 pause

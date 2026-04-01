@@ -1,9 +1,11 @@
 ; Inno Setup script — Flutter Uploader Windows installer.
 ;
 ; Creates an installer that:
-;   - Installs GUI + CLI executables to Program Files
-;   - Creates a Desktop shortcut (launcher)
-;   - Adds Start Menu entries (app, CLI, uninstall)
+;   - Wizard: user chooses install directory (default: Program Files\Flutter Uploader)
+;   - Installs only the listed files; does not delete unrelated files in that folder
+;   - Replaces existing app binaries if the same names are already present
+;   - Optional Desktop shortcut (task checkbox)
+;   - Start Menu entries (app, CLI, uninstall)
 ;   - Optionally launches the app on finish
 ;
 ; Build (from repo root, on Windows):
@@ -24,6 +26,9 @@ AppVersion=5.4
 AppPublisher={#AppPublisher}
 DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
+AllowRootDirectory=no
+AppendDefaultDirName=yes
+DisableDirPage=no
 DisableProgramGroupPage=yes
 OutputDir=..\..\dist-installer
 OutputBaseFilename=FlutterUploader-Setup
@@ -34,6 +39,10 @@ UninstallDisplayIcon={app}\{#AppExeName}
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[Messages]
+; Install only copies [Files] entries; it does not erase other files in the chosen folder.
+SelectDirLabel2=Choose the folder where Setup should install [name].%n%nSetup will not delete your other files in that folder—it only adds or updates the application files listed in this installer.%n%nTo use a different folder, click Browse.
 
 [Files]
 Source: "..\..\dist\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
@@ -46,7 +55,7 @@ Name: "{group}\{#AppName} (CLI)"; Filename: "{cmd}"; Parameters: "/k """"{app}\{
 Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
 
 [Tasks]
-Name: "desktopicon"; Description: "Create a &Desktop shortcut"; GroupDescription: "Additional icons:"; Flags: checkedonce
+Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Shortcuts:"; Flags: checkedonce
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; Flags: nowait postinstall skipifsilent
