@@ -6,15 +6,17 @@ from dataclasses import dataclass
 from typing import Callable
 
 from core.constants import (
-    COMMON_STEPS, GIT_PRE_STEPS, ANDROID_STEPS, IOS_STEPS,
-    GIT_POST_STEPS, POST_STEPS,
+    ANDROID_STEPS, IOS_STEPS, GIT_POST_STEPS, POST_STEPS,
+    COMMIT_PRE_STEPS, COMMON_STEPS, GIT_SYNC_STEPS,
     StepDef,
 )
 
 
-_SECTION_DEFS: tuple[tuple[str | None, list[StepDef]], ...] = (
-    (None,      COMMON_STEPS),
-    ("git",     GIT_PRE_STEPS),
+# Execution order: pre-commit first, then clean/pub, pull, builds, post-git, post-build.
+_SECTION_DEFS: tuple[tuple[str, list[StepDef]], ...] = (
+    ("git",     COMMIT_PRE_STEPS),
+    ("common",  COMMON_STEPS),
+    ("git",     GIT_SYNC_STEPS),
     ("android", ANDROID_STEPS),
     ("ios",     IOS_STEPS),
     ("git",     GIT_POST_STEPS),
@@ -26,15 +28,24 @@ ALL_STEP_DEFS: dict[str, StepDef] = {
 }
 
 STEP_TO_SECTION: dict[str, str] = {
-    s[0]: section
-    for section, steps in _SECTION_DEFS
-    if section is not None
-    for s in steps
+    s[0]: section for section, steps in _SECTION_DEFS for s in steps
 }
 
 VALID_BUILD_MODES: frozenset[str] = frozenset(("flutter", "release", "patch"))
 VALID_POWER_MODES: frozenset[str] = frozenset(("shutdown", "sleep"))
 VALID_STEP_KEYS: frozenset[str] = frozenset(ALL_STEP_DEFS)
+
+
+def _section_flags(cfg: PipelineConfig, *, ios_resolved: bool) -> dict[str, bool]:
+    """Per-step gating uses ``ios_resolved`` = ``cfg.ios_enabled``; pipeline ordering uses
+    ``include_ios and cfg.ios_enabled`` (pass that as *ios_resolved*)."""
+    return {
+        "common": cfg.common_enabled,
+        "git": cfg.git_enabled,
+        "android": cfg.android_enabled,
+        "ios": ios_resolved,
+        "post": cfg.post_enabled,
+    }
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +66,7 @@ class PipelineConfig:
     post_enabled: bool = True
     ios_enabled: bool = True
     git_enabled: bool = True
+    common_enabled: bool = True
 
     def run_kwargs(self) -> dict:
         return {
@@ -79,16 +91,11 @@ class PipelineConfig:
 
 
 def ordered_steps(cfg: PipelineConfig, *, include_ios: bool = False) -> list[StepDef]:
-    active = {
-        "git":     cfg.git_enabled,
-        "android": cfg.android_enabled,
-        "ios":     include_ios and cfg.ios_enabled,
-        "post":    cfg.post_enabled,
-    }
+    active = _section_flags(cfg, ios_resolved=include_ios and cfg.ios_enabled)
     return [
         s
         for section, steps in _SECTION_DEFS
-        if section is None or active.get(section, False)
+        if active.get(section, False)
         for s in steps
     ]
 
@@ -100,12 +107,7 @@ def step_enabled_filter(cfg: PipelineConfig) -> Callable[[str], bool]:
         return lambda key: appstore_allowed or key != "appstore_upload"
 
     selected = cfg.enabled_steps
-    section_active = {
-        "git":     cfg.git_enabled,
-        "android": cfg.android_enabled,
-        "ios":     cfg.ios_enabled,
-        "post":    cfg.post_enabled,
-    }
+    section_active = _section_flags(cfg, ios_resolved=cfg.ios_enabled)
 
     def _check(key: str) -> bool:
         if not appstore_allowed and key == "appstore_upload":
@@ -148,9 +150,9 @@ def step_display_name(key: str) -> str:
     return sd[1] if sd else key
 
 
-def list_steps() -> list[tuple[str, str, str | None]]:
+def list_steps() -> list[tuple[str, str, str]]:
     return [
-        (s[0], s[1], STEP_TO_SECTION.get(s[0]))
+        (s[0], s[1], STEP_TO_SECTION[s[0]])
         for _, steps in _SECTION_DEFS
         for s in steps
     ]

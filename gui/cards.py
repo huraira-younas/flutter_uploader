@@ -68,7 +68,14 @@ class CardBuilderMixin:
 
         header = ctk.CTkFrame(c, fg_color="transparent")
         header.grid(row=0, column=0, sticky="ew", padx=PAD["lg"], pady=(PAD["md"], 5))
+        header.grid_columnconfigure(0, weight=1)
         section_label(header, "Common", self._fonts["section"]).grid(row=0, column=0, sticky="w")
+        self._section_enable_vars["common"] = self._common_enabled
+        self._track(ctk.CTkSwitch(
+            header, variable=self._common_enabled, text="Enabled",
+            font=self._fonts["body_sm"], progress_color=COLORS["accent"],
+            command=lambda: self._on_section_toggle("common"),
+        )).grid(row=0, column=1, sticky="e")
 
         self._add_step_row(c, "clean", "Flutter Clean", "Remove build cache", False, "common", 1)
         self._build_pub_row(c, 2)
@@ -88,10 +95,12 @@ class CardBuilderMixin:
         switch.grid(row=0, column=0, sticky="w")
         self._section_switches.setdefault("common", []).append(switch)
 
-        self._track(segmented_button(
+        pub_seg = self._track(segmented_button(
             row_frame, values=["pub get", "pub upgrade"],
             variable=self._pub_mode, font=self._fonts["body_sm"],
-        )).grid(row=0, column=1, padx=PAD["sm"])
+        ))
+        pub_seg.grid(row=0, column=1, padx=PAD["sm"])
+        self._common_sub_widgets.append(pub_seg)
 
         self._add_status_widgets(row_frame, "pub_get", column=2)
 

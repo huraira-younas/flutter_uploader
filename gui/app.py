@@ -65,6 +65,7 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
         self._ios_enabled = ctk.BooleanVar(value=True) if self._show_ios else None
         self._shorebird_android = ctk.BooleanVar(value=False)
         self._android_enabled = ctk.BooleanVar(value=True)
+        self._common_enabled = ctk.BooleanVar(value=True)
         self._post_enabled = ctk.BooleanVar(value=True)
         self._git_enabled = ctk.BooleanVar(value=True)
 
@@ -77,6 +78,7 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
         self._sb_hint_labels: dict[str, ctk.CTkLabel] = {}
         self._pub_mode = ctk.StringVar(value="pub get")
         self._post_sub_widgets: list = []
+        self._common_sub_widgets: list = []
 
         self.step_progress_bars: dict[str, ctk.CTkProgressBar] = {}
         self.step_status_labels: dict[str, ctk.CTkLabel] = {}
@@ -263,6 +265,12 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
 
         if section_key == "post":
             for w in self._post_sub_widgets:
+                try:
+                    w.configure(state=state)
+                except Exception:
+                    pass
+        if section_key == "common":
+            for w in self._common_sub_widgets:
                 try:
                     w.configure(state=state)
                 except Exception:
@@ -477,6 +485,12 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
                         w.configure(state=state)
                     except Exception:
                         pass
+            if section_key == "common":
+                for w in self._common_sub_widgets:
+                    try:
+                        w.configure(state=state)
+                    except Exception:
+                        pass
         if self._shorebird_android:
             self._on_shorebird_toggle("android", self._shorebird_android)
         if self._shorebird_ios:
@@ -513,6 +527,7 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
             power_mode=self._power_mode.get(),
             quit_after_power=self._quit_after_power.get(),
             git_enabled=self._git_enabled.get(),
+            common_enabled=self._common_enabled.get(),
             android_enabled=self._android_enabled.get(),
             ios_enabled=bool(self._ios_enabled and self._ios_enabled.get()),
             post_enabled=self._post_enabled.get(),

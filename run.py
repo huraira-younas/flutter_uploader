@@ -106,7 +106,7 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     )
 
     sections = parser.add_argument_group("section toggles")
-    for key in ("android", "ios", "git", "post"):
+    for key in ("common", "android", "ios", "git", "post"):
         sections.add_argument(
             f"--{key}", action="store_true", default=None, dest=f"{key}_on",
             help=f"Enable {key} section.",
@@ -132,8 +132,7 @@ def _print_steps() -> None:
     print(f"  {'KEY':<20} {'LABEL':<25} SECTION")
     print(f"  {'─' * 20} {'─' * 25} {'─' * 10}")
     for key, label, section in list_steps():
-        sec = section or "common"
-        print(f"  {key:<20} {label:<25} {sec}")
+        print(f"  {key:<20} {label:<25} {section}")
     print()
 
 
@@ -180,6 +179,7 @@ def _run_cli(args: argparse.Namespace) -> None:
         power_mode=power_mode,
         quit_after_power=args.quit_after_power,
         git_enabled=args.git_on if args.git_on is not None else True,
+        common_enabled=args.common_on if args.common_on is not None else True,
         android_enabled=args.android_on if args.android_on is not None else True,
         ios_enabled=args.ios_on if args.ios_on is not None else include_ios,
         post_enabled=args.post_on if args.post_on is not None else True,

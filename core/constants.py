@@ -134,10 +134,15 @@ COMMON_STEPS: list[StepDef] = [
     ("pub_get", "Dependencies",  "pub get or pub upgrade", False),
 ]
 
-GIT_PRE_STEPS: list[StepDef] = [
+COMMIT_PRE_STEPS: list[StepDef] = [
     ("git_commit_pre", "Pre-release Commit", "git add . && git commit", True),
-    ("git_pull",       "Pull Master",        "git pull origin master",  True),
 ]
+
+GIT_SYNC_STEPS: list[StepDef] = [
+    ("git_pull", "Pull Master", "git pull origin master", True),
+]
+
+GIT_PRE_STEPS: list[StepDef] = COMMIT_PRE_STEPS + GIT_SYNC_STEPS
 
 ANDROID_STEPS: list[StepDef] = [
     ("build_apk", "Build APK", "Release, split-per-abi", True),
