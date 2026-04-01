@@ -15,12 +15,13 @@ import os
 
 from core.constants import (
     REPORT_BODY_OPEN, REPORT_BODY_CLOSE, REPORT_BORDER_LR,
-    APP_TITLE, APP_VERSION, LOGS_DIR, StepResult,
+    APP_TITLE, APP_VERSION, LOGS_DIR,
     REPORT_SECTION_H2, REPORT_TH_STYLE,
     REPORT_ACCENT, REPORT_CARD_BORDER, REPORT_CARD_BG,
     REPORT_BG, REPORT_SUCCESS, REPORT_ERROR, REPORT_MUTED,
     REPORT_SECTION,
 )
+from core.steps import StepResult
 
 from helpers.types import LogFn, fmt_elapsed
 

@@ -1,7 +1,6 @@
 """GUI/CLI entry: ``python run.py`` · ``--cli`` · ``--list-steps`` · ``--no-install``."""
 
 from collections import deque
-import subprocess
 import argparse
 import threading
 import time
@@ -9,55 +8,10 @@ import sys
 
 from core.constants import (
     MAX_REPORT_LOG_LINES,
-    UPLOADER_DIR,
-    StepResult,
     APP_TITLE,
-    DEFAULT_COMMIT_MESSAGE_PRE,
-    DEFAULT_COMMIT_MESSAGE_RELEASE,
 )
-
-
-def _load_dotenv() -> None:
-    from core.constants import load_dotenv_files
-
-    load_dotenv_files()
-
-
-def _run_pip(args: list[str], log=print) -> int:
-    proc = subprocess.Popen(
-        [sys.executable, "-m", "pip"] + args,
-        cwd=UPLOADER_DIR,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
-    )
-    try:
-        for line in proc.stdout:
-            log(line)
-    finally:
-        if proc.stdout:
-            proc.stdout.close()
-        proc.wait()
-    return proc.returncode
-
-
-def _ensure_deps(log=print) -> None:
-    reqs = UPLOADER_DIR / "requirements.txt"
-    if not reqs.exists():
-        log(">> No requirements.txt found; skipping dependency check.\n")
-        return
-    log(f">> Verifying dependencies from {reqs.name}…\n")
-    code = _run_pip(["install", "-r", str(reqs)], log=log)
-    if code != 0:
-        log(f">> pip install exited with code {code}\n")
-        return
-    log(">> Running pip check…\n")
-    chk = _run_pip(["check"], log=log)
-    if chk == 0:
-        log(">> All requirements satisfied (pip check OK).\n")
-    else:
-        log(f">> pip check exited with {chk}; see messages above.\n")
+from core.steps import StepResult
+from core.bootstrap import ensure_dependencies, load_environment
 
 
 def _build_cli_parser() -> argparse.ArgumentParser:
@@ -86,30 +40,31 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     run.add_argument("--build", metavar="NUM", help="Build number (default: from pubspec.yaml).")
     run.add_argument("--recipients", metavar="EMAILS", help="Comma-separated email addresses for Drive link.")
     run.add_argument(
-        "--commit-message", metavar="MSG", default=DEFAULT_COMMIT_MESSAGE_PRE,
-        help="Pre-Git commit message (default: %(default)s).",
+        "--commit-message", metavar="MSG", default=None,
+        help="Pre-Git commit message (default: pre_git.commit_message in config.json).",
     )
     run.add_argument(
         "--release-commit-message", metavar="MSG",
-        default=DEFAULT_COMMIT_MESSAGE_RELEASE,
+        default=None,
         dest="release_commit_message",
-        help="Post-Git release commit template; {version} and {build} are substituted (default: %(default)s).",
+        help="Post-Git release commit template; {version} and {build} are substituted "
+        "(default: post_git.commit_message in config.json).",
     )
     run.add_argument(
-        "--pub-mode", choices=["pub-get", "pub-upgrade"], default="pub-get",
-        help="Dependency resolution mode (default: pub-get).",
+        "--pub-mode", choices=["pub-get", "pub-upgrade"], default=None,
+        help="Dependency resolution mode (default: common.pub_mode in config.json).",
     )
     run.add_argument(
-        "--android-mode", choices=["flutter", "release", "patch"], default="flutter",
-        help="Android build mode (default: flutter).",
+        "--android-mode", choices=["flutter", "release", "patch"], default=None,
+        help="Android build mode (default: from config.json / Shorebird settings).",
     )
     run.add_argument(
-        "--ios-mode", choices=["flutter", "release", "patch"], default="flutter",
-        help="iOS build mode (default: flutter).",
+        "--ios-mode", choices=["flutter", "release", "patch"], default=None,
+        help="iOS build mode (default: from config.json / Shorebird settings).",
     )
     run.add_argument(
-        "--power-mode", choices=["shutdown", "sleep"], default="shutdown",
-        help="Power action after pipeline (default: shutdown).",
+        "--power-mode", choices=["shutdown", "sleep"], default=None,
+        help="Power action after pipeline (default: post_build.power_mode in config.json).",
     )
     run.add_argument(
         "--quit-after-power", action="store_true",
@@ -174,9 +129,12 @@ def _print_steps() -> None:
 
 
 def _run_cli(args: argparse.Namespace) -> None:
+    from core.cli_pipeline import resolve_cli_pipeline_config
+    from core.config_store import init_app_config
     from core.pipeline_config import (
-        PipelineConfig, ordered_steps, step_enabled_filter,
-        validate_step_keys, validate_build_mode, validate_power_mode,
+        parse_step_keys_csv,
+        ordered_steps, step_enabled_filter,
+        find_invalid_step_keys,
         step_display_name,
     )
     from helpers.platform_utils import is_macos
@@ -186,51 +144,18 @@ def _run_cli(args: argparse.Namespace) -> None:
     from helpers.types import fmt_elapsed
     from core.run import run_selected
 
-    version, build_num = read_version()
-    version = args.version or version
-    build_num = args.build or build_num
+    init_app_config()
 
-    android_mode = validate_build_mode(args.android_mode, "android")
-    ios_mode = validate_build_mode(args.ios_mode, "ios")
-    power_mode = validate_power_mode(args.power_mode)
-
-    enabled_steps: frozenset[str] | None = None
     if args.steps:
-        keys = [k.strip() for k in args.steps.split(",") if k.strip()]
-        bad = validate_step_keys(keys)
+        keys = parse_step_keys_csv(args.steps)
+        bad = find_invalid_step_keys(keys)
         if bad:
             print(f"Error: unknown step keys: {', '.join(bad)}", file=sys.stderr)
             print("Run with --list-steps to see valid keys.", file=sys.stderr)
             sys.exit(1)
-        enabled_steps = frozenset(keys)
 
     include_ios = is_macos()
-    if args.git_on is not None:
-        git_pre_enabled = args.git_on
-        git_post_enabled = args.git_on
-    else:
-        git_pre_enabled = args.pre_git_on if args.pre_git_on is not None else True
-        git_post_enabled = args.post_git_on if args.post_git_on is not None else True
-
-    cfg = PipelineConfig(
-        version=version,
-        build=build_num,
-        recipients=args.recipients,
-        commit_message_pre=args.commit_message,
-        commit_message_release=args.release_commit_message,
-        pub_upgrade=args.pub_mode == "pub-upgrade",
-        android_build_mode=android_mode,
-        ios_build_mode=ios_mode,
-        power_mode=power_mode,
-        quit_after_power=args.quit_after_power,
-        git_pre_enabled=git_pre_enabled,
-        git_post_enabled=git_post_enabled,
-        common_enabled=args.common_on if args.common_on is not None else True,
-        android_enabled=args.android_on if args.android_on is not None else True,
-        ios_enabled=args.ios_on if args.ios_on is not None else include_ios,
-        post_enabled=args.post_on if args.post_on is not None else True,
-        enabled_steps=enabled_steps,
-    )
+    cfg = resolve_cli_pipeline_config(args, include_ios=include_ios)
 
     if cfg.version and cfg.build:
         write_version(cfg.version, cfg.build)
@@ -276,12 +201,12 @@ def _run_cli(args: argparse.Namespace) -> None:
     success = False
     try:
         done = run_selected(
-            steps=all_steps,
+            schedule_quit_after_seconds=schedule_cli_quit,
             step_enabled=step_filter,
-            log=log,
             on_step_start=on_start,
             on_step_done=on_done,
-            schedule_quit_after_seconds=schedule_cli_quit,
+            steps=all_steps,
+            log=log,
             **cfg.run_kwargs(),
         )
         total = fmt_elapsed(time.monotonic() - pipeline_start)
@@ -297,13 +222,13 @@ def _run_cli(args: argparse.Namespace) -> None:
         total_elapsed = fmt_elapsed(time.monotonic() - pipeline_start)
         try:
             send_build_report(
-                log_lines=log_buffer,
-                step_results=step_results,
-                version=cfg.version,
-                build=cfg.build,
-                platforms=platforms_str,
                 total_elapsed=total_elapsed,
+                step_results=step_results,
+                platforms=platforms_str,
+                log_lines=log_buffer,
+                build=cfg.build,
                 success=success,
+                version=cfg.version,
                 log=log,
             )
         except Exception as exc:
@@ -328,16 +253,16 @@ def main() -> None:
         return
 
     if args.cli:
+        load_environment()
         if not args.no_install:
-            _ensure_deps()
-        _load_dotenv()
+            ensure_dependencies()
         _run_cli(args)
         return
 
-    _load_dotenv()
+    load_environment()
     try:
         if not args.no_install:
-            _ensure_deps()
+            ensure_dependencies()
         from gui.app import main as app_main
         app_main(run_deps=False)
     except Exception:

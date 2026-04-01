@@ -3,6 +3,19 @@ import os
 import re
 import sys
 
+from core.steps import (
+    GIT_POST_SECTION_STEPS,
+    COMMIT_PRE_STEPS,
+    GIT_POST_STEPS,
+    GIT_SYNC_STEPS,
+    ANDROID_STEPS,
+    COMMON_STEPS,
+    POST_STEPS,
+    StepResult,
+    IOS_STEPS,
+    StepDef,
+)
+
 
 APP_TITLE = "Flutter Uploader"
 APP_VERSION = "5.4"
@@ -17,6 +30,7 @@ UPLOADER_DIR = Path(__file__).resolve().parent.parent
 
 
 _dotenv_loaded = False
+_flutter_project_root: Path | None = None
 
 
 def load_dotenv_files() -> None:
@@ -31,10 +45,11 @@ def load_dotenv_files() -> None:
     _dotenv_loaded = True
 
 
-load_dotenv_files()
-
-
-def _require_flutter_project_root() -> Path:
+def require_flutter_project_root() -> Path:
+    """Resolve FLUTTER_PROJECT_ROOT from environment (cached after first success)."""
+    global _flutter_project_root
+    if _flutter_project_root is not None:
+        return _flutter_project_root
     raw = os.environ.get("FLUTTER_PROJECT_ROOT", "").strip()
     if not raw:
         print(
@@ -50,19 +65,27 @@ def _require_flutter_project_root() -> Path:
             file=sys.stderr,
         )
         raise SystemExit(1)
+    _flutter_project_root = p
     return p
 
 
-FLUTTER_PROJECT_ROOT = _require_flutter_project_root()
+def flutter_project_root() -> Path:
+    return require_flutter_project_root()
 
-APK_DIR = FLUTTER_PROJECT_ROOT / "build" / "app" / "outputs" / "flutter-apk"
-IPA_DIR = FLUTTER_PROJECT_ROOT / "build" / "ios" / "ipa"
+
+def apk_dir() -> Path:
+    return require_flutter_project_root() / "build" / "app" / "outputs" / "flutter-apk"
+
+
+def ipa_dir() -> Path:
+    return require_flutter_project_root() / "build" / "ios" / "ipa"
 
 CLI_REFERENCE_PATH = UPLOADER_DIR / "CLI_REFERENCE.md"
 ENVIRONMENT_PATH = UPLOADER_DIR / "ENVIRONMENT.md"
 README_PATH = UPLOADER_DIR / "README.md"
 
-PUBSPEC = FLUTTER_PROJECT_ROOT / "pubspec.yaml"
+def pubspec_path() -> Path:
+    return require_flutter_project_root() / "pubspec.yaml"
 OUTPUTS_DIR = UPLOADER_DIR / "outputs"
 LOGS_DIR = UPLOADER_DIR / "logs"
 
@@ -128,46 +151,3 @@ REPORT_TH_STYLE = (
 )
 
 MAX_REPORT_LOG_LINES = 20000
-
-
-StepDef = tuple[str, str, str, bool]
-StepResult = tuple[str, bool, float]
-
-COMMON_STEPS: list[StepDef] = [
-    ("clean",   "Flutter Clean", "Remove build cache",     False),
-    ("pub_get", "Dependencies",  "pub get or pub upgrade", False),
-]
-
-COMMIT_PRE_STEPS: list[StepDef] = [
-    ("git_commit_pre", "Pre-release Commit", "git add . && git commit", True),
-]
-
-GIT_SYNC_STEPS: list[StepDef] = [
-    ("git_pull", "Pull Master", "git pull origin master", True),
-]
-
-GIT_PRE_STEPS: list[StepDef] = COMMIT_PRE_STEPS + GIT_SYNC_STEPS
-
-ANDROID_STEPS: list[StepDef] = [
-    ("build_apk", "Build APK", "Release, split-per-abi", True),
-]
-
-IOS_STEPS: list[StepDef] = [
-    ("pod_install",     "Pod Install",      "Deintegrate + repo update + install", False),
-    ("build_ipa",       "Build IPA",        "Release archive",                     True),
-    ("appstore_upload", "App Store Upload", "Upload to App Store Connect",         True),
-]
-
-GIT_POST_STEPS: list[StepDef] = [
-    ("git_commit_rel", "Release Commit", "git add . && git commit v{ver}", True),
-    ("git_push",       "Push Master",    "git push origin master",         True),
-]
-
-# Pull + release commit + push (Post-Git UI card; pipeline runs pull before builds, rest after).
-GIT_POST_SECTION_STEPS: list[StepDef] = GIT_SYNC_STEPS + GIT_POST_STEPS
-
-POST_STEPS: list[StepDef] = [
-    ("open_folders",  "Open Outputs",    "Open outputs folder",         False),
-    ("drive_upload",  "Upload to Drive", "Upload outputs + email link", True),
-    ("shutdown",      "Power Off/Sleep", "Shutdown or sleep when done", False),
-]

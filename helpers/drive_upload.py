@@ -6,11 +6,11 @@ from pathlib import Path
 from core.constants import (
     DEFAULT_GMAIL_RECIPIENTS,
     DRIVE_SCOPES,
+    UPLOADER_DIR,
     FOLDER_MIME,
     LINK_PREFIX,
-    MIME_MAP,
     OUTPUTS_DIR,
-    UPLOADER_DIR,
+    MIME_MAP,
 )
 from helpers.types import LogFn, StopCheckFn
 

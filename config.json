@@ -1,0 +1,61 @@
+{
+  "app_info": {
+    "version": "1.0.22",
+    "build": "223"
+  },
+  "pre_git": {
+    "enabled": true,
+    "commit_message": "pre-release cleanup",
+    "steps": {
+      "git_commit_pre": true
+    }
+  },
+  "common": {
+    "enabled": true,
+    "pub_mode": "pub get",
+    "steps": {
+      "clean": false,
+      "pub_get": false
+    }
+  },
+  "post_git": {
+    "enabled": true,
+    "commit_message": "v{version} ({build})",
+    "steps": {
+      "git_pull": true,
+      "git_commit_rel": true,
+      "git_push": true
+    }
+  },
+  "android": {
+    "enabled": true,
+    "shorebird": false,
+    "shorebird_mode": "Release",
+    "steps": {
+      "build_apk": true
+    }
+  },
+  "ios": {
+    "enabled": true,
+    "shorebird": false,
+    "shorebird_mode": "Release",
+    "steps": {
+      "pod_install": false,
+      "build_ipa": true,
+      "appstore_upload": true
+    }
+  },
+  "post_build": {
+    "enabled": true,
+    "power_mode": "Sleep",
+    "quit_after_power": false,
+    "steps": {
+      "open_folders": false,
+      "drive_upload": true,
+      "shutdown": false
+    }
+  },
+  "distribution": {
+    "recipients": "hurairayounas7@gmail.com,buttabdulhannan708@gmail.com,fazielshah@gmail.com,waqas6683@gmail.com,bilalshahjehanbajwa@gmail.com,faisalbiginc@gmail.com,alahmedwaqar@gmail.com"
+  }
+}

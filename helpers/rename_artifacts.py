@@ -4,7 +4,7 @@ from pathlib import Path
 import shutil
 import re
 
-from core.constants import APK_DIR, IPA_DIR, OUTPUTS_DIR, ABI_PATTERN, PLAIN_RELEASE
+from core.constants import OUTPUTS_DIR, ABI_PATTERN, PLAIN_RELEASE, apk_dir, ipa_dir
 from helpers.types import LogFn
 
 
@@ -30,7 +30,7 @@ def _apk_dest_name(name: str, v: str, b: str) -> str | None:
 
 
 def _copy_apks(v: str, b: str, log: LogFn, dest: Path) -> bool:
-    apks = sorted(APK_DIR.glob("*.apk"))
+    apks = sorted(apk_dir().glob("*.apk"))
     if not apks:
         log("No APK files found to copy.\n")
         return True
@@ -51,7 +51,7 @@ def _copy_apks(v: str, b: str, log: LogFn, dest: Path) -> bool:
 
 
 def _copy_ipas(v: str, b: str, log: LogFn, dest: Path) -> bool:
-    ipas = sorted(IPA_DIR.glob("*.ipa"))
+    ipas = sorted(ipa_dir().glob("*.ipa"))
     if not ipas:
         log("No IPA files found to copy.\n")
         return True

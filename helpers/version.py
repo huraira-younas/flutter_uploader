@@ -4,12 +4,13 @@ import os
 import tempfile
 from pathlib import Path
 
-from core.constants import PUBSPEC, VERSION_RE
+from core.constants import VERSION_RE, pubspec_path
 
 
 def read_version() -> tuple[str, str]:
     """Return (version, build) from pubspec.yaml, e.g. ('1.0.6', '65')."""
-    text = PUBSPEC.read_text(encoding="utf-8")
+    pubspec = pubspec_path()
+    text = pubspec.read_text(encoding="utf-8")
     m = VERSION_RE.search(text)
     if not m:
         return ("0.0.0", "1")
@@ -23,13 +24,14 @@ def read_version() -> tuple[str, str]:
 
 def write_version(version: str, build: str) -> None:
     """Atomically update pubspec.yaml with the given version+build."""
-    text = PUBSPEC.read_text(encoding="utf-8")
+    pubspec = pubspec_path()
+    text = pubspec.read_text(encoding="utf-8")
     new_text = VERSION_RE.sub(rf"\g<1>{version}+{build}", text)
-    fd, tmp_path = tempfile.mkstemp(dir=PUBSPEC.parent, suffix=".tmp")
+    fd, tmp_path = tempfile.mkstemp(dir=pubspec.parent, suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(new_text)
-        Path(tmp_path).replace(PUBSPEC)
+        Path(tmp_path).replace(pubspec)
     except Exception:
         try:
             os.unlink(tmp_path)

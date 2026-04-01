@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections import deque
+from collections.abc import Callable
+from typing import Any
 from threading import Thread
 import tkinter as tk
 import atexit
@@ -10,37 +11,38 @@ import queue
 import sys
 import time
 
-from core.constants import (
-    COMMIT_PRE_STEPS, GIT_POST_SECTION_STEPS, ANDROID_STEPS, IOS_STEPS,
-    APP_TITLE, APP_VERSION, StepDef, StepResult,
-    POST_STEPS,
-    DEFAULT_COMMIT_MESSAGE_PRE, DEFAULT_COMMIT_MESSAGE_RELEASE,
-    MAX_REPORT_LOG_LINES,
-)
+from core.constants import APP_TITLE, APP_VERSION
+from core.bootstrap import ensure_dependencies
+from core.steps import StepDef
 
 from core.pipeline_config import (
-    ordered_steps, step_enabled_filter,
-    PipelineConfig, STEP_TO_SECTION,
+    build_pipeline_config,
     step_display_name,
+    PipelineConfig,
+    ordered_steps,
 )
 
 from helpers.platform_utils import is_macos, is_shorebird_available
 from helpers.shell import terminate_active_processes
-from helpers.build_report import send_build_report
 from helpers.types import fmt_elapsed
 
 from gui.widgets import scrollable_frame, segmented_button
 from gui.settings import SettingsPanel, load_saved_theme
-from helpers.version import write_version
 from gui.theme import COLORS, RADIUS, PAD
-from gui.cards import CardBuilderMixin
+from core.config_store import (
+    pipeline_section_enabled,
+    ensure_config_file,
+    reload_app_config,
+    init_app_config,
+)
+from gui.sections import mount_config_panel, persist_gui_config
 from gui.console import ConsolePanel
+from gui.pipeline_runner import PipelineRunner
 from gui.readme import ReadMePanel
-from core.run import run_selected
 import customtkinter as ctk
 
 
-class BuildApp(CardBuilderMixin, ctk.CTk):
+class BuildApp(ctk.CTk):
     def __init__(self):
         saved = load_saved_theme()
         if saved:
@@ -49,6 +51,9 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
                 set_theme(saved)
         super().__init__(fg_color=COLORS["bg"])
         self.protocol("WM_DELETE_WINDOW", self._on_closing)
+
+        ensure_config_file()
+        init_app_config()
 
         self._shorebird_ok = is_shorebird_available()
         self.title(f"{APP_TITLE} v{APP_VERSION}")
@@ -62,42 +67,35 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
         self._destroyed = False
         self.is_busy = False
 
-        self._shorebird_ios = ctk.BooleanVar(value=self._shorebird_ok) if self._show_ios else None
-        self._ios_enabled = ctk.BooleanVar(value=True) if self._show_ios else None
-        self._shorebird_android = ctk.BooleanVar(value=False)
-        self._android_enabled = ctk.BooleanVar(value=True)
-        self._common_enabled = ctk.BooleanVar(value=True)
-        self._post_enabled = ctk.BooleanVar(value=True)
-        self._git_pre_enabled = ctk.BooleanVar(value=True)
-        self._git_post_enabled = ctk.BooleanVar(value=True)
-
-        self._power_mode = ctk.StringVar(value="Sleep" if self._show_ios else "Shutdown")
-        self._ios_sb_mode = ctk.StringVar(value="Release") if self._show_ios else None
         self._sb_mode_widgets: dict[str, ctk.CTkSegmentedButton] = {}
-        self._android_sb_mode = ctk.StringVar(value="Release")
         self._sb_checkboxes: dict[str, ctk.CTkCheckBox] = {}
-        self._quit_after_power = ctk.BooleanVar(value=False)
         self._sb_hint_labels: dict[str, ctk.CTkLabel] = {}
-        self._pub_mode = ctk.StringVar(value="pub get")
-        self._post_sub_widgets: list = []
-        self._common_sub_widgets: list = []
-        self._section_extra_widgets: dict[str, list] = {}
-
-        self._commit_msg_pre = ctk.StringVar(value=DEFAULT_COMMIT_MESSAGE_PRE)
-        self._commit_msg_release = ctk.StringVar(value=DEFAULT_COMMIT_MESSAGE_RELEASE)
+        self._gui_config_serializers: dict[str, Callable[[], dict[str, Any]]] = {}
 
         self.step_progress_bars: dict[str, ctk.CTkProgressBar] = {}
         self.step_status_labels: dict[str, ctk.CTkLabel] = {}
         self.step_switches: dict[str, ctk.CTkSwitch] = {}
         self.step_vars: dict[str, ctk.BooleanVar] = {}
 
-        self._section_switches: dict[str, list[ctk.CTkSwitch]] = {}
-        self._saved_section_states: dict[str, dict[str, bool]] = {}
-        self._section_enable_vars: dict[str, ctk.BooleanVar] = {}
+        # Section toggle state is managed by ``self.sections``.
         self._step_start_times: dict[str, float] = {}
         self._pipeline_thread: Thread | None = None
         self._running_steps: set[str] = set()
         self._lockable_widgets: list = []
+
+        # Populated by section mounts (see ``gui/sections/``).
+        self.version_var: ctk.StringVar | None = None
+        self.build_var: ctk.StringVar | None = None
+        self.recipients_var: ctk.StringVar | None = None
+        self._commit_msg_pre: ctk.StringVar | None = None
+        self._commit_msg_release: ctk.StringVar | None = None
+        self._pub_mode: ctk.StringVar | None = None
+        self._shorebird_android: ctk.BooleanVar | None = None
+        self._android_sb_mode: ctk.StringVar | None = None
+        self._shorebird_ios: ctk.BooleanVar | None = None
+        self._ios_sb_mode: ctk.StringVar | None = None
+        self._power_mode: ctk.StringVar | None = None
+        self._quit_after_power: ctk.BooleanVar | None = None
 
         self._fonts = {
             "mono_sm": ctk.CTkFont(family="Consolas", size=12),
@@ -119,8 +117,13 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
         }
 
         self._build_ui()
+        self._pipeline_runner = PipelineRunner()
         self._apply_ios_mode_rules()
         self._start_queue_polling()
+
+    def _track(self, widget):
+        self._lockable_widgets.append(widget)
+        return widget
 
     # ── UI construction ───────────────────────────────────────────────────────
 
@@ -165,35 +168,7 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
             self._config_frame, row=0, column=0, sticky="nsew",
         )
 
-        row = 0
-        self._build_info_card(row); row += 1
-        row = self._build_section_card(
-            "Pre-Git", COMMIT_PRE_STEPS, "git_pre",
-            row=row, enable_var=self._git_pre_enabled,
-            commit_message_row=("Commit message:", self._commit_msg_pre),
-        )
-        row = self._build_common_card(row)
-        row = self._build_section_card(
-            "Post-Git", GIT_POST_SECTION_STEPS, "git_post",
-            row=row, enable_var=self._git_post_enabled,
-            commit_message_row=("Release commit message:", self._commit_msg_release),
-        )
-        row = self._build_section_card(
-            "Android Build", ANDROID_STEPS, "android",
-            row=row, enable_var=self._android_enabled,
-            shorebird_var=self._shorebird_android, shorebird_mode_var=self._android_sb_mode,
-        )
-        if self._show_ios:
-            row = self._build_section_card(
-                "iOS Build", IOS_STEPS, "ios",
-                row=row, enable_var=self._ios_enabled,
-                shorebird_var=self._shorebird_ios, shorebird_mode_var=self._ios_sb_mode,
-            )
-        row = self._build_section_card(
-            "Post-Build", POST_STEPS, "post",
-            row=row, enable_var=self._post_enabled,
-        )
-        self._build_dist_card(row)
+        mount_config_panel(self, self.config_scroll)
 
         self._console = ConsolePanel(self._console_frame, self._fonts)
         self._console.grid(row=0, column=0, sticky="nsew")
@@ -249,50 +224,6 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
 
     # ── Section / shorebird toggles ──────────────────────────────────────────
 
-    def _on_section_toggle(self, section_key: str) -> None:
-        var = self._section_enable_vars.get(section_key)
-        if not var:
-            return
-        enabled = var.get()
-        state = "normal" if enabled else "disabled"
-
-        section_step_keys = [
-            k for k, sec in STEP_TO_SECTION.items()
-            if sec == section_key and k in self.step_vars
-        ]
-
-        if not enabled:
-            self._saved_section_states[section_key] = {
-                k: self.step_vars[k].get() for k in section_step_keys
-            }
-            for k in section_step_keys:
-                self.step_vars[k].set(False)
-        else:
-            saved = self._saved_section_states.pop(section_key, {})
-            for k in section_step_keys:
-                self.step_vars[k].set(saved.get(k, True))
-
-        for switch in self._section_switches.get(section_key, []):
-            switch.configure(state=state)
-
-        if section_key == "post":
-            for w in self._post_sub_widgets:
-                try:
-                    w.configure(state=state)
-                except Exception:
-                    pass
-        if section_key == "common":
-            for w in self._common_sub_widgets:
-                try:
-                    w.configure(state=state)
-                except Exception:
-                    pass
-        for w in self._section_extra_widgets.get(section_key, []):
-            try:
-                w.configure(state=state)
-            except Exception:
-                pass
-
     def _on_shorebird_toggle(self, section_key: str, var: ctk.BooleanVar) -> None:
         if not self._shorebird_ok:
             var.set(False)
@@ -319,7 +250,7 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
 
         shorebird_on = bool(self._shorebird_ios and self._shorebird_ios.get())
         ios_mode = (self._ios_sb_mode.get() if self._ios_sb_mode else "Release").lower()
-        ios_enabled = bool(self._ios_enabled and self._ios_enabled.get())
+        ios_enabled = pipeline_section_enabled("ios", include_ios_default=self._show_ios)
 
         patch_mode = shorebird_on and ios_mode == "patch"
         if patch_mode:
@@ -359,7 +290,7 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
                 msg_type, data = self.ui_queue.get_nowait()
                 processed += 1
                 if msg_type == "log":
-                    log_items.append((data, self._console._classify(data)))
+                    log_items.append((data, self._console.classify(data)))
                 elif msg_type == "log_tagged":
                     log_items.append(data)
                 elif msg_type == "status":
@@ -368,6 +299,11 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
                     self._update_busy_state(*data)
                 elif msg_type == "quit_delayed":
                     self._schedule_delayed_quit(float(data))
+                elif msg_type == "persist_config":
+                    try:
+                        persist_gui_config(self)
+                    except OSError:
+                        pass
         except queue.Empty:
             pass
         if log_items:
@@ -473,12 +409,6 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
                 w.configure(state=state)
             except Exception:
                 pass
-        for switches in self._section_switches.values():
-            for s in switches:
-                try:
-                    s.configure(state=state)
-                except Exception:
-                    pass
         for cb in self._sb_checkboxes.values():
             try:
                 cb.configure(state=state)
@@ -491,28 +421,7 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
                 pass
 
     def _restore_widget_states(self):
-        """Re-apply section/shorebird toggle states after unlock (UI only, no var changes)."""
-        for section_key, var in self._section_enable_vars.items():
-            state = "normal" if var.get() else "disabled"
-            for switch in self._section_switches.get(section_key, []):
-                switch.configure(state=state)
-            if section_key == "post":
-                for w in self._post_sub_widgets:
-                    try:
-                        w.configure(state=state)
-                    except Exception:
-                        pass
-            if section_key == "common":
-                for w in self._common_sub_widgets:
-                    try:
-                        w.configure(state=state)
-                    except Exception:
-                        pass
-            for w in self._section_extra_widgets.get(section_key, []):
-                try:
-                    w.configure(state=state)
-                except Exception:
-                    pass
+        """Re-apply shorebird UI rules after unlock."""
         if self._shorebird_android:
             self._on_shorebird_toggle("android", self._shorebird_android)
         if self._shorebird_ios:
@@ -524,6 +433,29 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
     def _get_checked_steps(self) -> frozenset[str]:
         """Raw set of step keys whose UI switch is on."""
         return frozenset(key for key, var in self.step_vars.items() if var.get())
+
+    def _build_pipeline_config_from_ui(self) -> PipelineConfig:
+        return build_pipeline_config(
+            commit_message_release=(
+                self._commit_msg_release.get().strip() if self._commit_msg_release else None
+            ),
+            commit_message_pre=self._commit_msg_pre.get().strip() if self._commit_msg_pre else None,
+            android_build_mode=self._resolve_build_mode(self._shorebird_android, self._android_sb_mode),
+            quit_after_power=self._quit_after_power.get() if self._quit_after_power else False,
+            git_post_enabled=pipeline_section_enabled("git_post"),
+            git_pre_enabled=pipeline_section_enabled("git_pre"),
+            common_enabled=pipeline_section_enabled("common"),
+            android_enabled=pipeline_section_enabled("android"),
+            ios_build_mode=self._resolve_build_mode(self._shorebird_ios, self._ios_sb_mode),
+            enabled_steps=self._get_checked_steps(),
+            ios_enabled=pipeline_section_enabled("ios", include_ios_default=self._show_ios),
+            recipients=self.recipients_var.get().strip() or None if self.recipients_var else None,
+            pub_upgrade=self._pub_mode.get() == "pub upgrade" if self._pub_mode else False,
+            power_mode=self._power_mode.get() if self._power_mode else "Shutdown",
+            post_enabled=pipeline_section_enabled("post"),
+            version=(self.version_var.get().strip() if self.version_var else ""),
+            build=(self.build_var.get().strip() if self.build_var else ""),
+        )
 
     # ── Run / Stop ───────────────────────────────────────────────────────────
 
@@ -537,27 +469,8 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
         if self.is_busy:
             return
         self._stop_requested = False
-
-        cfg = PipelineConfig(
-            version=self.version_var.get().strip(),
-            build=self.build_var.get().strip(),
-            recipients=self.recipients_var.get().strip() or None,
-            commit_message_pre=self._commit_msg_pre.get().strip() or DEFAULT_COMMIT_MESSAGE_PRE,
-            commit_message_release=self._commit_msg_release.get().strip()
-            or DEFAULT_COMMIT_MESSAGE_RELEASE,
-            pub_upgrade=self._pub_mode.get() == "pub upgrade",
-            android_build_mode=self._resolve_build_mode(self._shorebird_android, self._android_sb_mode),
-            ios_build_mode=self._resolve_build_mode(self._shorebird_ios, self._ios_sb_mode),
-            power_mode=self._power_mode.get(),
-            quit_after_power=self._quit_after_power.get(),
-            git_pre_enabled=self._git_pre_enabled.get(),
-            git_post_enabled=self._git_post_enabled.get(),
-            common_enabled=self._common_enabled.get(),
-            android_enabled=self._android_enabled.get(),
-            ios_enabled=bool(self._ios_enabled and self._ios_enabled.get()),
-            post_enabled=self._post_enabled.get(),
-            enabled_steps=self._get_checked_steps(),
-        )
+        reload_app_config()
+        cfg = self._build_pipeline_config_from_ui()
 
         all_steps = ordered_steps(cfg, include_ios=self._show_ios)
 
@@ -567,106 +480,50 @@ class BuildApp(CardBuilderMixin, ctk.CTk):
         self._switch_tab("Console")
 
         self._pipeline_thread = Thread(
-            target=self._run_pipeline_thread,
+            target=self._run_pipeline_worker,
             args=(all_steps, cfg),
             daemon=True,
         )
         self._pipeline_thread.start()
 
-    def _run_pipeline_thread(self, all_steps: list[StepDef], cfg: PipelineConfig):
-        if cfg.version and cfg.build:
-            write_version(cfg.version, cfg.build)
+    def _run_pipeline_worker(self, all_steps: list[StepDef], cfg: PipelineConfig) -> None:
+        self._pipeline_runner.execute(
+            on_persist_request=self._queue_persist_config,
+            on_schedule_quit=self._queue_quit_delay,
+            on_step_status=self._queue_step_status,
+            stop_requested=lambda: self._stop_requested,
+            is_destroyed=lambda: self._destroyed,
+            on_tagged_log=self._queue_tagged_log,
+            steps=all_steps,
+            cfg=cfg,
+            on_busy=self._queue_busy,
+            on_log=self._queue_log,
+        )
 
-        step_filter = step_enabled_filter(cfg)
-        for key, _, _, _ in all_steps:
-            if step_filter(key):
-                self.ui_queue.put(("status", (key, "pending")))
+    def _queue_log(self, text: str) -> None:
+        self.ui_queue.put(("log", text))
 
-        platforms_str = cfg.platforms_label()
+    def _queue_tagged_log(self, text: str, tag: str) -> None:
+        self.ui_queue.put(("log_tagged", (text, tag)))
 
-        log_buffer: deque[str] = deque(maxlen=MAX_REPORT_LOG_LINES)
-        step_results: list[StepResult] = []
+    def _queue_step_status(self, step_key: str, status: str) -> None:
+        self.ui_queue.put(("status", (step_key, status)))
 
-        def tee_log(text: str):
-            log_buffer.append(text)
-            if not self._destroyed:
-                self.ui_queue.put(("log", text))
+    def _queue_busy(self, busy: bool, label: str) -> None:
+        self.ui_queue.put(("busy", (busy, label)))
 
-        def tee_tagged(text: str, tag: str):
-            log_buffer.append(text)
-            if not self._destroyed:
-                self.ui_queue.put(("log_tagged", (text, tag)))
+    def _queue_quit_delay(self, delay: float) -> None:
+        if not self._destroyed:
+            self.ui_queue.put(("quit_delayed", delay))
 
-        tee_log(f"{APP_TITLE} — {platforms_str}\n")
-        tee_log(f"Android build: {cfg.android_build_mode}  |  iOS build: {cfg.ios_build_mode}\n")
-        tee_log(f"version={cfg.version} build={cfg.build}\n\n")
-
-        step_times: dict[str, float] = {}
-
-        def on_start(step_key: str):
-            step_times[step_key] = time.monotonic()
-            self.ui_queue.put(("status", (step_key, "running")))
-            tee_tagged(f"\n▶ {step_display_name(step_key)}\n", "step")
-
-        def on_done(ok: bool, step_key: str):
-            elapsed = time.monotonic() - step_times.get(step_key, time.monotonic())
-            self.ui_queue.put(("status", (step_key, "ok" if ok else "error")))
-            name = step_display_name(step_key)
-            elapsed_str = fmt_elapsed(elapsed)
-            step_results.append((name, ok, elapsed))
-            tag = "ok" if ok else "err"
-            mark = "✓" if ok else "✗"
-            tee_tagged(f"  {mark} {name} — {elapsed_str}\n", tag)
-
-        def _schedule_quit_ui(delay: float) -> None:
-            if not self._destroyed:
-                self.ui_queue.put(("quit_delayed", delay))
-
-        pipeline_start = time.monotonic()
-        completion_msg = ""
-        success = False
-        try:
-            done = run_selected(
-                steps=all_steps,
-                step_enabled=step_filter,
-                log=tee_log,
-                stop_check=lambda: self._stop_requested,
-                on_step_start=on_start,
-                on_step_done=on_done,
-                schedule_quit_after_seconds=_schedule_quit_ui,
-                **cfg.run_kwargs(),
-            )
-            total = fmt_elapsed(time.monotonic() - pipeline_start)
-            if done:
-                tee_tagged(f"\n✓ All done — total {total}\n", "ok")
-                completion_msg = f"✓ Completed — {total}"
-                success = True
-            else:
-                tee_tagged(f"\n✗ Stopped — {total}\n", "err")
-                completion_msg = f"✗ Stopped — {total}"
-        except Exception as exc:
-            total = fmt_elapsed(time.monotonic() - pipeline_start)
-            tee_log(f"\nError: {exc}\n")
-            completion_msg = f"✗ Error — {total}"
-        finally:
-            total_elapsed = fmt_elapsed(time.monotonic() - pipeline_start)
-            try:
-                send_build_report(
-                    log_lines=log_buffer,
-                    step_results=step_results,
-                    version=cfg.version,
-                    build=cfg.build,
-                    platforms=platforms_str,
-                    total_elapsed=total_elapsed,
-                    success=success,
-                    log=tee_log,
-                )
-            except Exception as exc:
-                tee_log(f"Build report error: {exc}\n")
-            terminate_active_processes()
-            self.ui_queue.put(("busy", (False, completion_msg)))
+    def _queue_persist_config(self) -> None:
+        self.ui_queue.put(("persist_config", None))
 
     def _on_closing(self):
+        try:
+            persist_gui_config(self)
+        except OSError:
+            pass
         self._destroyed = True
         self._stop_requested = True
         terminate_active_processes()
@@ -687,8 +544,7 @@ def main(run_deps: bool = True) -> None:
     """Start the GUI; *run_deps* runs pip install for ``requirements.txt`` when True."""
     atexit.register(terminate_active_processes)
     if run_deps:
-        from run import _ensure_deps
-        _ensure_deps(print)
+        ensure_dependencies(print)
     app = BuildApp()
     app.mainloop()
 

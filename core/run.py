@@ -2,7 +2,14 @@ from typing import Callable
 import shutil
 import os
 
-from core.constants import StepDef, FLUTTER_PROJECT_ROOT, OUTPUTS_DIR, APK_DIR, IPA_DIR, POWER_DELAY
+from core.constants import (
+    flutter_project_root,
+    OUTPUTS_DIR,
+    POWER_DELAY,
+    apk_dir,
+    ipa_dir,
+)
+from core.steps import StepDef
 from helpers.platform_utils import open_folder, shutdown_pc, sleep_pc
 from helpers.drive_upload import upload_outputs_to_drive
 from helpers.types import LogFn, StopCheckFn
@@ -14,11 +21,36 @@ from helpers.rename_artifacts import (
 )
 
 
-_CMD = CommandRunner(project_root=FLUTTER_PROJECT_ROOT)
+_CMD: CommandRunner | None = None
+
+
+def _cmd() -> CommandRunner:
+    global _CMD
+    if _CMD is None:
+        _CMD = CommandRunner(project_root=flutter_project_root())
+    return _CMD
 
 
 def _log_noop(_: str) -> None:
     pass
+
+
+def _git_add_and_commit(message: str, log: LogFn) -> bool:
+    if not _cmd().run_project(["git", "add", "."], log):
+        return False
+    return _cmd().run_project(["git", "commit", "-m", message], log)
+
+
+def _remove_dir_if_exists(path: os.PathLike[str], log: LogFn, label: str) -> bool:
+    dir_path = os.fspath(path)
+    if os.path.exists(dir_path):
+        try:
+            shutil.rmtree(dir_path)
+            log(f"\n>> Deleted {label} output dir: {dir_path}\n")
+        except OSError as e:
+            log(f"\n>> Failed to delete {label} dir: {e}\n")
+            return False
+    return True
 
 
 def _run_project_cmd(
@@ -28,7 +60,7 @@ def _run_project_cmd(
     header: str,
     stop_check: StopCheckFn | None = None,
 ) -> bool:
-    return _CMD.run_project(cmd, log, header=header, stop_check=stop_check)
+    return _cmd().run_project(cmd, log, header=header, stop_check=stop_check)
 
 
 def run_flutter_clean(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
@@ -52,10 +84,7 @@ def run_flutter_pub_upgrade(log: LogFn = _log_noop, stop_check: StopCheckFn | No
 
 def run_git_commit_pre(message: str, log: LogFn = _log_noop) -> bool:
     log(f'\n>> git add . && git commit -m "{message}"\n')
-    if not _CMD.run_project(["git", "add", "."], log):
-        return False
-    _CMD.run_project(["git", "commit", "-m", message], log)
-    return True
+    return _git_add_and_commit(message, log)
 
 
 def run_git_pull(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
@@ -78,9 +107,7 @@ def format_release_commit_message(template: str, version: str, build: str) -> st
 
 def run_git_commit_release(message: str, log: LogFn = _log_noop) -> bool:
     log(f'\n>> git add . && git commit -m "{message}"\n')
-    if not _CMD.run_project(["git", "add", "."], log):
-        return False
-    return _CMD.run_project(["git", "commit", "-m", message], log)
+    return _git_add_and_commit(message, log)
 
 
 def run_git_push(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
@@ -91,13 +118,9 @@ def run_git_push(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) 
 
 
 def run_build_apk(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
-    if APK_DIR.exists():
-        try:
-            shutil.rmtree(APK_DIR)
-            log(f"\n>> Deleted APK output dir: {APK_DIR}\n")
-        except OSError as e:
-            log(f"\n>> Failed to delete APK dir: {e}\n")
-            return False
+    apk_output_dir = apk_dir()
+    if not _remove_dir_if_exists(apk_output_dir, log, "APK"):
+        return False
     return _run_project_cmd(
         ["flutter", "build", "apk", "--release", "--split-per-abi"], log,
         header="\n>> flutter build apk --release --split-per-abi\n", stop_check=stop_check,
@@ -105,25 +128,21 @@ def run_build_apk(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None)
 
 
 def run_pod_install(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
-    ios_dir = FLUTTER_PROJECT_ROOT / "ios"
+    ios_dir = flutter_project_root() / "ios"
     if not ios_dir.exists():
         log("iOS directory not found. Skipping pod install.\n")
         return False
-    if not _CMD.run_in(["pod", "deintegrate"], ios_dir, log, header="\n>> pod deintegrate\n", stop_check=stop_check):
+    if not _cmd().run_in(["pod", "deintegrate"], ios_dir, log, header="\n>> pod deintegrate\n", stop_check=stop_check):
         return False
-    if not _CMD.run_in(["pod", "repo", "update"], ios_dir, log, header="\n>> pod repo update\n", stop_check=stop_check):
+    if not _cmd().run_in(["pod", "repo", "update"], ios_dir, log, header="\n>> pod repo update\n", stop_check=stop_check):
         return False
-    return _CMD.run_in(["pod", "install"], ios_dir, log, header="\n>> pod install\n", stop_check=stop_check)
+    return _cmd().run_in(["pod", "install"], ios_dir, log, header="\n>> pod install\n", stop_check=stop_check)
 
 
 def run_build_ipa(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
-    if IPA_DIR.exists():
-        try:
-            shutil.rmtree(IPA_DIR)
-            log(f"\n>> Deleted IPA output dir: {IPA_DIR}\n")
-        except OSError as e:
-            log(f"\n>> Failed to delete IPA dir: {e}\n")
-            return False
+    ios_ipa_dir = ipa_dir()
+    if not _remove_dir_if_exists(ios_ipa_dir, log, "IPA"):
+        return False
     return _run_project_cmd(
         ["flutter", "build", "ipa", "--release"], log,
         header="\n>> flutter build ipa --release\n", stop_check=stop_check,
@@ -133,8 +152,8 @@ def run_build_ipa(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None)
 def run_appstore_upload(
     version: str,
     build: str,
-    log: LogFn = _log_noop,
     stop_check: StopCheckFn | None = None,
+    log: LogFn = _log_noop,
 ) -> bool:
     """Upload the first IPA found to App Store Connect via xcrun altool."""
     issuer_id = os.environ.get("APP_STORE_ISSUER_ID", "").strip()
@@ -148,13 +167,13 @@ def run_appstore_upload(
         log("App Store Connect credentials not configured. Skipping upload.\n")
         return True
 
-    ipa_files = sorted(IPA_DIR.glob("*.ipa"))
+    ipa_files = sorted(ipa_dir().glob("*.ipa"))
     if not ipa_files:
         log("No IPA files found to upload.\n")
         return False
 
     ipa_path = ipa_files[0]
-    return _CMD.run_project(
+    return _cmd().run_project(
         [
             "xcrun", "altool", "--upload-app", "--type", "ios",
             "-f", str(ipa_path),
@@ -285,7 +304,12 @@ def _build_runners(
         if ios_build_mode == "patch":
             log("Skipping App Store upload: Shorebird patch mode selected.\n")
             return True
-        return run_appstore_upload(version, build, log, stop_check=stop_check)
+        return run_appstore_upload(
+            version=version,
+            stop_check=stop_check,
+            build=build,
+            log=log,
+        )
 
     def _build_apk_and_collect(log: LogFn) -> bool:
         ok = apk_builder(log, stop_check=stop_check)
@@ -347,13 +371,16 @@ def run_selected(
     if should_clear_outputs:
         clear_outputs()
     runners = _build_runners(
-        version, build, drive_email_link_to, stop_check,
+        commit_message_release=commit_message_release,
         android_build_mode=android_build_mode,
         commit_message=commit_message,
-        commit_message_release=commit_message_release,
         ios_build_mode=ios_build_mode,
         pub_upgrade=pub_upgrade,
+        recipients=drive_email_link_to,
+        stop_check=stop_check,
         power_mode=power_mode,
+        version=version,
+        build=build,
     )
 
     shutdown_step_ok = False

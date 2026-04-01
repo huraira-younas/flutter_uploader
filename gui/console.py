@@ -87,6 +87,10 @@ class ConsolePanel(ctk.CTkFrame):
                 return tag
         return "info"
 
+    def classify(self, text: str) -> str:
+        """Public classifier used by queue draining code."""
+        return self._classify(text)
+
     def _should_scroll(self) -> bool:
         """Auto-scroll only when the Console tab is visible and user hasn't scrolled up."""
         return self.visible and self._tb.yview()[1] >= 0.99
@@ -124,7 +128,7 @@ class ConsolePanel(ctk.CTkFrame):
                 self._textbox.see(tk.END)
 
     def append(self, text: str):
-        self._insert(text, self._classify(text))
+        self._insert(text, self.classify(text))
 
     def append_tagged(self, text: str, tag: str):
         self._insert(text, tag)

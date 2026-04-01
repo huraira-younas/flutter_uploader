@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, TypedDict
 
 from core.constants import (
-    ANDROID_STEPS, IOS_STEPS, GIT_POST_STEPS, POST_STEPS,
-    COMMIT_PRE_STEPS, COMMON_STEPS, GIT_SYNC_STEPS,
-    DEFAULT_COMMIT_MESSAGE_PRE, DEFAULT_COMMIT_MESSAGE_RELEASE,
+    DEFAULT_COMMIT_MESSAGE_RELEASE,
+    DEFAULT_COMMIT_MESSAGE_PRE,
+)
+from core.steps import (
+    GIT_POST_STEPS, COMMIT_PRE_STEPS, COMMON_STEPS, GIT_SYNC_STEPS,
+    ANDROID_STEPS, POST_STEPS, IOS_STEPS,
     StepDef,
 )
 
@@ -36,6 +39,19 @@ STEP_TO_SECTION: dict[str, str] = {
 VALID_BUILD_MODES: frozenset[str] = frozenset(("flutter", "release", "patch"))
 VALID_POWER_MODES: frozenset[str] = frozenset(("shutdown", "sleep"))
 VALID_STEP_KEYS: frozenset[str] = frozenset(ALL_STEP_DEFS)
+
+
+class RunSelectedArgs(TypedDict):
+    commit_message_release: str
+    android_build_mode: str
+    drive_email_link_to: str | None
+    quit_after_power: bool
+    commit_message: str
+    ios_build_mode: str
+    pub_upgrade: bool
+    power_mode: str
+    version: str
+    build: str
 
 
 def _section_flags(cfg: PipelineConfig, *, ios_resolved: bool) -> dict[str, bool]:
@@ -73,14 +89,14 @@ class PipelineConfig:
     git_post_enabled: bool = True
     common_enabled: bool = True
 
-    def run_kwargs(self) -> dict:
+    def run_kwargs(self) -> RunSelectedArgs:
         return {
-            "android_build_mode": self.android_build_mode,
-            "quit_after_power": self.quit_after_power,
-            "drive_email_link_to": self.recipients,
-            "ios_build_mode": self.ios_build_mode,
-            "commit_message": self.commit_message_pre,
             "commit_message_release": self.commit_message_release,
+            "android_build_mode": self.android_build_mode,
+            "drive_email_link_to": self.recipients,
+            "quit_after_power": self.quit_after_power,
+            "commit_message": self.commit_message_pre,
+            "ios_build_mode": self.ios_build_mode,
             "pub_upgrade": self.pub_upgrade,
             "power_mode": self.power_mode,
             "version": self.version,
@@ -126,8 +142,58 @@ def step_enabled_filter(cfg: PipelineConfig) -> Callable[[str], bool]:
     return _check
 
 
-def validate_step_keys(keys: list[str]) -> list[str]:
+def build_pipeline_config(
+    *,
+    commit_message_release: str | None = None,
+    commit_message_pre: str | None = None,
+    android_build_mode: str = "flutter",
+    quit_after_power: bool = False,
+    git_post_enabled: bool = True,
+    git_pre_enabled: bool = True,
+    common_enabled: bool = True,
+    android_enabled: bool = True,
+    ios_build_mode: str = "flutter",
+    enabled_steps: frozenset[str] | None = None,
+    ios_enabled: bool = True,
+    recipients: str | None = None,
+    pub_upgrade: bool = False,
+    power_mode: str = "Shutdown",
+    post_enabled: bool = True,
+    version: str = "1.0.0",
+    build: str = "1",
+) -> PipelineConfig:
+    return PipelineConfig(
+        commit_message_release=(commit_message_release or "").strip() or DEFAULT_COMMIT_MESSAGE_RELEASE,
+        commit_message_pre=(commit_message_pre or "").strip() or DEFAULT_COMMIT_MESSAGE_PRE,
+        android_build_mode=android_build_mode,
+        quit_after_power=quit_after_power,
+        git_post_enabled=git_post_enabled,
+        git_pre_enabled=git_pre_enabled,
+        common_enabled=common_enabled,
+        android_enabled=android_enabled,
+        ios_build_mode=ios_build_mode,
+        enabled_steps=enabled_steps,
+        ios_enabled=ios_enabled,
+        recipients=recipients,
+        pub_upgrade=pub_upgrade,
+        power_mode=power_mode,
+        post_enabled=post_enabled,
+        version=version,
+        build=build,
+    )
+
+
+def find_invalid_step_keys(keys: list[str]) -> list[str]:
     return [k for k in keys if k not in VALID_STEP_KEYS]
+
+
+def parse_step_keys_csv(steps_arg: str) -> list[str]:
+    return [k.strip() for k in steps_arg.split(",") if k.strip()]
+
+
+def validate_step_keys(keys: list[str]) -> list[str]:
+    """Backward-compatible alias for ``find_invalid_step_keys``."""
+    return find_invalid_step_keys(keys)
 
 
 def validate_build_mode(mode: str, label: str) -> str:
