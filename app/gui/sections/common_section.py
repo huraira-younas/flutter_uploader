@@ -30,16 +30,21 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
         section_key="common", app=app, header_row=off,
     )
 
+    n = len(COMMON_STEPS)
     for offset, (key, label, desc, _def) in enumerate(COMMON_STEPS):
         grid_r = 1 + offset + off
+        row_pady = (PAD["sm"], PAD["md"]) if offset == n - 1 else (PAD["sm"], PAD["sm"])
         if key == "pub_get":
-            _build_pub_row(app, c, grid_row=grid_r, pub_var=overrides[key])
+            _build_pub_row(
+                app, c, grid_row=grid_r, pub_var=overrides[key], pady=row_pady,
+            )
         else:
             W.add_step_row(
                 c, app=app, key=key, label=label, desc=desc,
                 section_key="common",
                 grid_row=grid_r, default_on=_def,
                 var=overrides[key],
+                pady=row_pady,
             )
     if not ok:
         W.disable_section_widgets(app, "common")
@@ -54,7 +59,14 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
     return row + 1
 
 
-def _build_pub_row(app: ConfigPanelHost, parent: ctk.CTkFrame, grid_row: int, pub_var: ctk.BooleanVar) -> None:
+def _build_pub_row(
+    app: ConfigPanelHost,
+    parent: ctk.CTkFrame,
+    *,
+    grid_row: int,
+    pub_var: ctk.BooleanVar,
+    pady: tuple[int, int] | None = None,
+) -> None:
     W.add_step_row(
         parent,
         app=app,
@@ -65,6 +77,7 @@ def _build_pub_row(app: ConfigPanelHost, parent: ctk.CTkFrame, grid_row: int, pu
         grid_row=grid_row,
         default_on=False,
         var=pub_var,
+        pady=pady,
         trailing_widgets=_pub_mode_controls(app),
     )
 

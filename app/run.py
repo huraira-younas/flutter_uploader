@@ -55,14 +55,6 @@ def _build_cli_parser() -> argparse.ArgumentParser:
         help="Dependency resolution mode (default: common.pub_mode in config.json).",
     )
     run.add_argument(
-        "--android-mode", choices=["flutter", "release", "patch"], default=None,
-        help="Android build mode (default: from config.json / Shorebird settings).",
-    )
-    run.add_argument(
-        "--ios-mode", choices=["flutter", "release", "patch"], default=None,
-        help="iOS build mode (default: from config.json / Shorebird settings).",
-    )
-    run.add_argument(
         "--power-mode", choices=["shutdown", "sleep"], default=None,
         help="Power action after pipeline (default: post_build.power_mode in config.json).",
     )
@@ -93,7 +85,7 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     )
     git_sections.add_argument(
         "--post-git", action="store_true", default=None, dest="post_git_on",
-        help="Enable Post-Git section (pull, release commit, push).",
+        help="Enable Post-Git section (release commit, push).",
     )
     git_sections.add_argument(
         "--no-post-git", action="store_false", dest="post_git_on",
@@ -192,7 +184,7 @@ def _run_cli(args: argparse.Namespace) -> None:
         log(f"  {mark} {name} — {elapsed_str}\n")
 
     log(f"{APP_TITLE} — {platforms_str}\n")
-    log(f"Android build: {cfg.android_build_mode}  |  iOS build: {cfg.ios_build_mode}\n")
+    log(f"Flutter builds (Android APK/AAB, iOS IPA)\n")
     log(f"version={cfg.version} build={cfg.build}\n\n")
 
     quit_after_timer_scheduled = [False]

@@ -86,6 +86,10 @@ def apk_dir() -> Path:
     return require_flutter_project_root() / "build" / "app" / "outputs" / "flutter-apk"
 
 
+def aab_dir() -> Path:
+    return require_flutter_project_root() / "build" / "app" / "outputs" / "bundle" / "release"
+
+
 def ipa_dir() -> Path:
     return require_flutter_project_root() / "build" / "ios" / "ipa"
 
@@ -118,6 +122,7 @@ DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive"]
 LINK_PREFIX = "https://drive.google.com/drive/folders/"
 FOLDER_MIME = "application/vnd.google-apps.folder"
 MIME_MAP: dict[str, str] = {
+    ".aab": "application/octet-stream",
     ".apk": "application/vnd.android.package-archive",
     ".ipa": "application/octet-stream",
 }
@@ -136,7 +141,6 @@ ORPHAN_PATTERNS: list[str] = [
     "dart.*snapshot",
     "flutter_tools",
     "xcodebuild",
-    "shorebird",
 ]
 
 

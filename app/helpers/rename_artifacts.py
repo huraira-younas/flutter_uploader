@@ -4,7 +4,7 @@ from pathlib import Path
 import shutil
 import re
 
-from core.constants import OUTPUTS_DIR, ABI_PATTERN, PLAIN_RELEASE, apk_dir, ipa_dir
+from core.constants import OUTPUTS_DIR, ABI_PATTERN, PLAIN_RELEASE, aab_dir, apk_dir, ipa_dir
 from helpers.types import LogFn
 
 
@@ -76,6 +76,34 @@ def copy_apks_to_outputs(version: str, build: str, log: LogFn) -> bool:
     if not v or not b:
         return True
     return _copy_apks(v, b, log, OUTPUTS_DIR)
+
+
+def _copy_aabs(v: str, b: str, log: LogFn, dest: Path) -> bool:
+    aabs = sorted(aab_dir().glob("*.aab"))
+    if not aabs:
+        log("No AAB files found to copy.\n")
+        return True
+
+    log("Copying AAB(s) to outputs …\n")
+    for idx, aab in enumerate(aabs):
+        suffix = f".{idx}" if idx > 0 else ""
+        new_name = f"v{v}+{b}{suffix}.aab"
+        try:
+            shutil.copy2(str(aab), str(dest / new_name))
+            log(f"  {aab.name} → {new_name}\n")
+        except OSError as e:
+            log(f"  Copy failed: {e}\n")
+            return False
+    return True
+
+
+def copy_aabs_to_outputs(version: str, build: str, log: LogFn) -> bool:
+    """Copy App Bundle artifacts to outputs/ immediately after build."""
+    OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
+    v, b = _sanitize(version), _sanitize(build)
+    if not v or not b:
+        return True
+    return _copy_aabs(v, b, log, OUTPUTS_DIR)
 
 
 def copy_ipas_to_outputs(version: str, build: str, log: LogFn) -> bool:

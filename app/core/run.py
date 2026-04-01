@@ -6,6 +6,7 @@ from helpers.platform_utils import open_folder, shutdown_pc, sleep_pc
 from helpers.drive_upload import upload_outputs_to_drive
 from helpers.types import LogFn, StopCheckFn
 from helpers.rename_artifacts import (
+    copy_aabs_to_outputs,
     copy_apks_to_outputs,
     copy_ipas_to_outputs,
     clear_outputs,
@@ -16,6 +17,7 @@ from core.constants import (
     flutter_project_root,
     OUTPUTS_DIR,
     POWER_DELAY,
+    aab_dir,
     apk_dir,
     ipa_dir,
 )
@@ -130,6 +132,16 @@ def run_build_apk(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None)
     )
 
 
+def run_build_aab(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
+    bundle_dir = aab_dir()
+    if not _remove_dir_if_exists(bundle_dir, log, "App Bundle"):
+        return False
+    return _run_project_cmd(
+        ["flutter", "build", "appbundle", "--release"], log,
+        header="\n>> flutter build appbundle --release\n", stop_check=stop_check,
+    )
+
+
 def run_pod_install(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
     ios_dir = flutter_project_root() / "ios"
     if not ios_dir.exists():
@@ -189,60 +201,6 @@ def run_appstore_upload(
     )
 
 
-def run_shorebird_release_android(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
-    return _run_project_cmd(
-        ["shorebird", "release", "android", "--artifact", "apk"], log,
-        header="\n>> shorebird release android --artifact apk\n", stop_check=stop_check,
-    )
-
-
-def run_shorebird_release_ios(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
-    return _run_project_cmd(
-        ["shorebird", "release", "ios"], log,
-        header="\n>> shorebird release ios\n", stop_check=stop_check,
-    )
-
-
-def run_shorebird_patch_android(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
-    return run_shorebird_patch_android_for_release("", log=log, stop_check=stop_check)
-
-
-def run_shorebird_patch_android_for_release(
-    release_version: str,
-    log: LogFn = _log_noop,
-    stop_check: StopCheckFn | None = None,
-) -> bool:
-    cmd = ["shorebird", "patch", "android"]
-    if release_version:
-        log(f">> Auto-target Shorebird release: {release_version}\n")
-        cmd += ["--release-version", release_version]
-    return _run_project_cmd(
-        cmd, log,
-        header="\n>> shorebird patch android\n",
-        stop_check=stop_check,
-    )
-
-
-def run_shorebird_patch_ios(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
-    return run_shorebird_patch_ios_for_release("", log=log, stop_check=stop_check)
-
-
-def run_shorebird_patch_ios_for_release(
-    release_version: str,
-    log: LogFn = _log_noop,
-    stop_check: StopCheckFn | None = None,
-) -> bool:
-    cmd = ["shorebird", "patch", "ios"]
-    if release_version:
-        log(f">> Auto-target Shorebird release: {release_version}\n")
-        cmd += ["--release-version", release_version]
-    return _run_project_cmd(
-        cmd, log,
-        header="\n>> shorebird patch ios\n",
-        stop_check=stop_check,
-    )
-
-
 def run_drive_upload(
     recipients: str | None, version: str, build: str, log: LogFn,
     stop_check: StopCheckFn | None = None,
@@ -258,27 +216,12 @@ def run_open_outputs(log: LogFn) -> bool:
     return open_folder(OUTPUTS_DIR, log)
 
 
-_APK_BUILDERS = {
-    "release":  run_shorebird_release_android,
-    "patch":    run_shorebird_patch_android,
-    "flutter":  run_build_apk,
-}
-
-_IPA_BUILDERS = {
-    "release":  run_shorebird_release_ios,
-    "patch":    run_shorebird_patch_ios,
-    "flutter":  run_build_ipa,
-}
-
-
 def _build_runners(
     version: str,
     build: str,
     recipients: str | None,
     stop_check: StopCheckFn | None,
     *,
-    android_build_mode: str = "release",
-    ios_build_mode: str = "release",
     commit_message: str = "pre-release cleanup",
     commit_message_release: str = "v{version} ({build})",
     pub_upgrade: bool = False,
@@ -288,25 +231,10 @@ def _build_runners(
     def with_stop(fn: Callable) -> Callable[[LogFn], bool]:
         return lambda log: fn(log, stop_check=stop_check)
 
-    release_version = f"{version}+{build}".strip("+")
     pub_fn = run_flutter_pub_upgrade if pub_upgrade else run_flutter_pub_get
-    apk_builder = _APK_BUILDERS.get(android_build_mode, run_build_apk)
-    ipa_builder = _IPA_BUILDERS.get(ios_build_mode, run_build_ipa)
     power_fn = sleep_pc if power_mode == "Sleep" else shutdown_pc
 
-    if android_build_mode == "patch":
-        apk_builder = lambda log, stop_check=None: run_shorebird_patch_android_for_release(
-            release_version, log=log, stop_check=stop_check,
-        )
-    if ios_build_mode == "patch":
-        ipa_builder = lambda log, stop_check=None: run_shorebird_patch_ios_for_release(
-            release_version, log=log, stop_check=stop_check,
-        )
-
     def _appstore_runner(log: LogFn) -> bool:
-        if ios_build_mode == "patch":
-            log("Skipping App Store upload: Shorebird patch mode selected.\n")
-            return True
         return run_appstore_upload(
             version=version,
             stop_check=stop_check,
@@ -315,13 +243,19 @@ def _build_runners(
         )
 
     def _build_apk_and_collect(log: LogFn) -> bool:
-        ok = apk_builder(log, stop_check=stop_check)
+        ok = run_build_apk(log, stop_check=stop_check)
         if ok:
             copy_apks_to_outputs(version, build, log)
         return ok
 
+    def _build_aab_and_collect(log: LogFn) -> bool:
+        ok = run_build_aab(log, stop_check=stop_check)
+        if ok:
+            copy_aabs_to_outputs(version, build, log)
+        return ok
+
     def _build_ipa_and_collect(log: LogFn) -> bool:
-        ok = ipa_builder(log, stop_check=stop_check)
+        ok = run_build_ipa(log, stop_check=stop_check)
         if ok:
             copy_ipas_to_outputs(version, build, log)
         return ok
@@ -340,7 +274,8 @@ def _build_runners(
         "git_push":        with_stop(run_git_push),
         "git_pull":        with_stop(run_git_pull),
         "pub_get":         with_stop(pub_fn),
-        
+
+        "build_aab":       _build_aab_and_collect,
         "build_apk":       _build_apk_and_collect,
         "build_ipa":       _build_ipa_and_collect,
         "appstore_upload": _appstore_runner,
@@ -358,8 +293,6 @@ def run_selected(
     stop_check: StopCheckFn | None = None,
     on_step_start: Callable[[str], None] | None = None,
     on_step_done: Callable[[bool, str], None] | None = None,
-    android_build_mode: str = "release",
-    ios_build_mode: str = "release",
     commit_message: str = "pre-release cleanup",
     commit_message_release: str = "v{version} ({build})",
     pub_upgrade: bool = False,
@@ -368,16 +301,14 @@ def run_selected(
     schedule_quit_after_seconds: Callable[[float], None] | None = None,
 ) -> bool:
     should_clear_outputs = any(
-        key in {"build_apk", "build_ipa"} and step_enabled(key)
+        key in {"build_aab", "build_apk", "build_ipa"} and step_enabled(key)
         for key, _label, _desc, _critical in steps
     )
     if should_clear_outputs:
         clear_outputs()
     runners = _build_runners(
         commit_message_release=commit_message_release,
-        android_build_mode=android_build_mode,
         commit_message=commit_message,
-        ios_build_mode=ios_build_mode,
         pub_upgrade=pub_upgrade,
         recipients=drive_email_link_to,
         stop_check=stop_check,

@@ -8,7 +8,8 @@
     "enabled": true,
     "commit_message": "pre-release cleanup",
     "steps": {
-      "git_commit_pre": false
+      "git_commit_pre": true,
+      "git_pull": true
     }
   },
   "common": {
@@ -20,40 +21,36 @@
     }
   },
   "post_git": {
-    "enabled": false,
+    "enabled": true,
     "commit_message": "v{version} ({build})",
     "steps": {
-      "git_pull": false,
-      "git_commit_rel": false,
-      "git_push": false
+      "git_commit_rel": true,
+      "git_push": true
     }
   },
   "android": {
-    "enabled": false,
-    "shorebird": false,
-    "shorebird_mode": "Release",
+    "enabled": true,
     "steps": {
-      "build_apk": false
+      "build_apk": true,
+      "build_aab": true
     }
   },
   "ios": {
     "enabled": true,
-    "shorebird": false,
-    "shorebird_mode": "Release",
     "steps": {
-      "pod_install": false,
-      "build_ipa": false,
-      "appstore_upload": false
+      "pod_install": true,
+      "build_ipa": true,
+      "appstore_upload": true
     }
   },
   "post_build": {
     "enabled": true,
     "power_mode": "Sleep",
-    "quit_after_power": false,
+    "quit_after_power": true,
     "steps": {
       "open_folders": false,
-      "drive_upload": false,
-      "shutdown": false
+      "drive_upload": true,
+      "shutdown": true
     }
   }
 }

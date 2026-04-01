@@ -57,7 +57,7 @@ class PipelineRunner:
                 on_tagged_log(text, tag)
 
         tee_log(f"{APP_TITLE} — {platforms_str}\n")
-        tee_log(f"Android build: {cfg.android_build_mode}  |  iOS build: {cfg.ios_build_mode}\n")
+        tee_log("Flutter builds (Android APK/AAB, iOS IPA)\n")
         tee_log(f"version={cfg.version} build={cfg.build}\n\n")
 
         def on_start(step_key: str) -> None:

@@ -38,7 +38,6 @@ Full packaging guide: [`installer/INSTALLER_GUIDE.md`](installer/INSTALLER_GUIDE
 | **iOS** *(Mac)* | Xcode · CocoaPods · signing + provisioning |
 | **Drive** | GCP project · Drive API · OAuth client JSON |
 | **App Store** | Connect API key (`.p8`) · Issuer ID · Key ID |
-| **Optional** | Shorebird CLI |
 
 ---
 
@@ -73,7 +72,7 @@ flutter_uploader/
 
 | Doc | Description |
 |:---|:---|
-| [`app/README.md`](app/README.md) | App usage: pipeline, settings, themes, Shorebird, Drive, App Store |
+| [`app/README.md`](app/README.md) | App usage: pipeline, settings, themes, Drive, App Store |
 | [`app/CLI_REFERENCE.md`](app/CLI_REFERENCE.md) | CLI flags, section toggles, step selection |
 | [`app/ENVIRONMENT.md`](app/ENVIRONMENT.md) | Environment variables & secrets setup |
 | [`installer/INSTALLER_GUIDE.md`](installer/INSTALLER_GUIDE.md) | Building Windows EXE / macOS DMG installers |

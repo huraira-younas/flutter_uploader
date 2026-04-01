@@ -46,4 +46,4 @@ All environment configuration is stored in **`app/secrets/enviroment.json`** (gi
 
 ## Tooling
 
-Python 3.10+ · Flutter · Git · *(iOS)* Xcode, CocoaPods · *(optional)* Shorebird
+Python 3.10+ · Flutter · Git · *(iOS)* Xcode, CocoaPods

@@ -11,36 +11,48 @@ import queue
 import time
 import sys
 
-from helpers.platform_utils import is_macos, is_shorebird_available
+from helpers.platform_utils import is_macos
 from helpers.shell import terminate_active_processes
 from helpers.types import fmt_elapsed
 
-from gui.widgets import scrollable_frame, segmented_button
-from gui.settings import SettingsPanel, load_saved_theme
-from gui.sections import mount_config_panel, persist_gui_config
-from gui.pipeline_runner import PipelineRunner
-from gui.theme import COLORS, RADIUS, PAD
 from gui.console import ConsolePanel
+from gui.pipeline_runner import PipelineRunner
 from gui.readme import ReadMePanel
+from gui.sections import persist_gui_config, mount_config_panel
+from gui.settings import load_saved_theme, SettingsPanel
+from gui.theme import COLORS, PAD, RADIUS
+from gui.widgets import segmented_button, scrollable_frame
 
-from core.prerequisites import flutter_project_prereq_status
-from core.constants import APP_TITLE, APP_VERSION
 from core.bootstrap import ensure_dependencies
-from core.pipeline_config import (
-    build_pipeline_config,
-    step_display_name,
-    PipelineConfig,
-    ordered_steps,
-)
 from core.config_store import (
     pipeline_section_enabled,
     ensure_config_file,
     reload_app_config,
     init_app_config,
 )
+from core.constants import APP_TITLE, APP_VERSION
+from core.pipeline_config import (
+    build_pipeline_config,
+    step_display_name,
+    PipelineConfig,
+    ordered_steps,
+)
+from core.prerequisites import flutter_project_prereq_status
 from core.steps import StepDef
 
 import customtkinter as ctk
+
+
+PIPELINE_SECTION_KEYS: tuple[str, ...] = (
+    "git_pre", "common", "git_post", "android", "ios", "post",
+)
+
+
+def _safe_widget_state(widget, state: str) -> None:
+    try:
+        widget.configure(state=state)
+    except Exception:
+        pass
 
 
 class BuildApp(ctk.CTk):
@@ -56,7 +68,6 @@ class BuildApp(ctk.CTk):
         super().__init__(fg_color=COLORS["bg"])
         self.protocol("WM_DELETE_WINDOW", self._on_closing)
 
-        self._shorebird_ok = is_shorebird_available()
         self.title(f"{APP_TITLE} v{APP_VERSION}")
         self._show_ios = is_macos()
 
@@ -68,19 +79,15 @@ class BuildApp(ctk.CTk):
         self._destroyed = False
         self.is_busy = False
 
-        self._sb_mode_widgets: dict[str, ctk.CTkSegmentedButton] = {}
-        self._sb_checkboxes: dict[str, ctk.CTkCheckBox] = {}
-        self._sb_hint_labels: dict[str, ctk.CTkLabel] = {}
         self._gui_config_serializers: dict[str, Callable[[], Any]] = {}
         self.section_enabled_vars: dict[str, ctk.BooleanVar] = {
-            "git_pre": ctk.BooleanVar(value=pipeline_section_enabled("git_pre")),
-            "common": ctk.BooleanVar(value=pipeline_section_enabled("common")),
-            "git_post": ctk.BooleanVar(value=pipeline_section_enabled("git_post")),
-            "android": ctk.BooleanVar(value=pipeline_section_enabled("android")),
-            "ios": ctk.BooleanVar(
-                value=pipeline_section_enabled("ios", include_ios_default=self._show_ios),
-            ),
-            "post": ctk.BooleanVar(value=pipeline_section_enabled("post")),
+            k: ctk.BooleanVar(
+                value=pipeline_section_enabled(
+                    k,
+                    **({"include_ios_default": self._show_ios} if k == "ios" else {}),
+                ),
+            )
+            for k in PIPELINE_SECTION_KEYS
         }
         self._section_widgets: dict[str, list[Any]] = {
             "git_pre": [],
@@ -120,10 +127,6 @@ class BuildApp(ctk.CTk):
         self._commit_msg_pre: ctk.StringVar | None = None
         self._commit_msg_release: ctk.StringVar | None = None
         self._pub_mode: ctk.StringVar | None = None
-        self._shorebird_android: ctk.BooleanVar | None = None
-        self._android_sb_mode: ctk.StringVar | None = None
-        self._shorebird_ios: ctk.BooleanVar | None = None
-        self._ios_sb_mode: ctk.StringVar | None = None
         self._power_mode: ctk.StringVar | None = None
         self._quit_after_power: ctk.BooleanVar | None = None
 
@@ -165,14 +168,13 @@ class BuildApp(ctk.CTk):
         self._section_bool_vars.setdefault(section_key, []).append(var)
 
     def _sync_section_enabled_from_disk(self) -> None:
-        self.section_enabled_vars["git_pre"].set(pipeline_section_enabled("git_pre"))
-        self.section_enabled_vars["common"].set(pipeline_section_enabled("common"))
-        self.section_enabled_vars["git_post"].set(pipeline_section_enabled("git_post"))
-        self.section_enabled_vars["android"].set(pipeline_section_enabled("android"))
-        self.section_enabled_vars["ios"].set(
-            pipeline_section_enabled("ios", include_ios_default=self._show_ios),
-        )
-        self.section_enabled_vars["post"].set(pipeline_section_enabled("post"))
+        for k in PIPELINE_SECTION_KEYS:
+            self.section_enabled_vars[k].set(
+                pipeline_section_enabled(
+                    k,
+                    **({"include_ios_default": self._show_ios} if k == "ios" else {}),
+                ),
+            )
 
     def _clear_config_panel_state(self) -> None:
         self._gui_config_serializers.clear()
@@ -181,9 +183,6 @@ class BuildApp(ctk.CTk):
             self._section_widgets[k].clear()
         for k in self._section_bool_vars:
             self._section_bool_vars[k].clear()
-        self._sb_mode_widgets.clear()
-        self._sb_checkboxes.clear()
-        self._sb_hint_labels.clear()
         self.step_progress_bars.clear()
         self.step_status_labels.clear()
         self.step_switches.clear()
@@ -195,10 +194,6 @@ class BuildApp(ctk.CTk):
         self._commit_msg_pre = None
         self._commit_msg_release = None
         self._pub_mode = None
-        self._shorebird_android = None
-        self._android_sb_mode = None
-        self._shorebird_ios = None
-        self._ios_sb_mode = None
         self._power_mode = None
         self._quit_after_power = None
 
@@ -313,24 +308,6 @@ class BuildApp(ctk.CTk):
         self._tab_frames[name].tkraise()
         self._console.visible = (name == "Console")
 
-    # ── Section / shorebird toggles ──────────────────────────────────────────
-
-    def _on_shorebird_toggle(self, section_key: str, var: ctk.BooleanVar) -> None:
-        seg = self._sb_mode_widgets.get(section_key)
-        if not self._shorebird_ok:
-            var.set(False)
-            if seg:
-                seg.configure(state="disabled")
-            return
-        if seg:
-            seg.configure(state="normal" if var.get() else "disabled")
-        if section_key == "ios":
-            self._apply_ios_mode_rules()
-
-    def _on_shorebird_mode_changed(self, section_key: str) -> None:
-        if section_key == "ios":
-            self._apply_ios_mode_rules()
-
     def _on_section_enabled_changed(self, section_key: str) -> None:
         vars_list = self._section_bool_vars.get(section_key, [])
         enabling = self._section_enabled(section_key)
@@ -354,7 +331,7 @@ class BuildApp(ctk.CTk):
         return bool(var.get()) if var is not None else fallback
 
     def _apply_ios_mode_rules(self) -> None:
-        """Enforce UI-only rules derived from current iOS build mode selection."""
+        """Disable App Store upload when credentials are missing or section is off."""
         if not self._show_ios:
             return
 
@@ -363,15 +340,7 @@ class BuildApp(ctk.CTk):
         if not appstore_sw or not appstore_var:
             return
 
-        shorebird_on = bool(self._shorebird_ios and self._shorebird_ios.get())
-        ios_mode = (self._ios_sb_mode.get() if self._ios_sb_mode else "Release").lower()
         ios_enabled = self._section_enabled("ios", self._show_ios)
-
-        patch_mode = shorebird_on and ios_mode == "patch"
-        if patch_mode:
-            appstore_var.set(False)
-            appstore_sw.configure(state="disabled")
-            return
 
         if "appstore_upload" in self._steps_disabled_by_prereq:
             appstore_var.set(False)
@@ -391,15 +360,6 @@ class BuildApp(ctk.CTk):
             self.run_btn.configure(state="normal", fg_color=COLORS["accent"])
         else:
             self.run_btn.configure(state="disabled", fg_color=COLORS["disabled"])
-
-    @staticmethod
-    def _resolve_build_mode(
-        shorebird_var: ctk.BooleanVar | None,
-        mode_var: ctk.StringVar | None,
-    ) -> str:
-        if not shorebird_var or not shorebird_var.get():
-            return "flutter"
-        return (mode_var.get() if mode_var else "Release").lower()
 
     # ── Queue polling & logging ──────────────────────────────────────────────
 
@@ -532,42 +492,10 @@ class BuildApp(ctk.CTk):
     def _set_widgets_locked(self, locked: bool):
         state = "disabled" if locked else "normal"
         for w in self._lockable_widgets:
-            try:
-                w.configure(state=state)
-            except Exception:
-                pass
-        shorebird_vars: dict[str, ctk.BooleanVar | None] = {
-            "android": self._shorebird_android,
-            "ios": self._shorebird_ios,
-        }
-        for sk, cb in self._sb_checkboxes.items():
-            try:
-                if locked:
-                    cb.configure(state="disabled")
-                elif not self._shorebird_ok:
-                    cb.configure(state="disabled")
-                else:
-                    cb.configure(state="normal")
-            except Exception:
-                pass
-        for sk, seg in self._sb_mode_widgets.items():
-            try:
-                if locked:
-                    seg.configure(state="disabled")
-                elif not self._shorebird_ok:
-                    seg.configure(state="disabled")
-                else:
-                    sv = shorebird_vars.get(sk)
-                    seg.configure(state="normal" if (sv and sv.get()) else "disabled")
-            except Exception:
-                pass
+            _safe_widget_state(w, state)
 
     def _restore_widget_states(self):
-        """Re-apply shorebird UI rules after unlock."""
-        if self._shorebird_android:
-            self._on_shorebird_toggle("android", self._shorebird_android)
-        if self._shorebird_ios:
-            self._on_shorebird_toggle("ios", self._shorebird_ios)
+        """Re-apply section/prereq UI rules after unlock."""
         self._apply_section_enabled_states()
         self._apply_ios_mode_rules()
 
@@ -575,18 +503,12 @@ class BuildApp(ctk.CTk):
         """Apply *state* to all tracked widgets in a single section, then
         re-apply prereq overrides for any steps disabled by missing config."""
         for widget in self._section_widgets.get(section_key, []):
-            try:
-                widget.configure(state=state)
-            except Exception:
-                pass
+            _safe_widget_state(widget, state)
         if state == "normal":
             for step_key in self._steps_disabled_by_prereq:
                 sw = self.step_switches.get(step_key)
                 if sw:
-                    try:
-                        sw.configure(state="disabled")
-                    except Exception:
-                        pass
+                    _safe_widget_state(sw, "disabled")
 
     def _apply_section_enabled_states(self) -> None:
         """Bulk-apply enabled/disabled across all sections (used after full rebuild)."""
@@ -607,19 +529,17 @@ class BuildApp(ctk.CTk):
                 self._commit_msg_release.get().strip() if self._commit_msg_release else None
             ),
             commit_message_pre=self._commit_msg_pre.get().strip() if self._commit_msg_pre else None,
-            android_build_mode=self._resolve_build_mode(self._shorebird_android, self._android_sb_mode),
-            quit_after_power=self._quit_after_power.get() if self._quit_after_power else False,
             git_post_enabled=self._section_enabled("git_post"),
+            quit_after_power=self._quit_after_power.get() if self._quit_after_power else False,
             git_pre_enabled=self._section_enabled("git_pre"),
-            common_enabled=self._section_enabled("common"),
             android_enabled=self._section_enabled("android"),
-            ios_build_mode=self._resolve_build_mode(self._shorebird_ios, self._ios_sb_mode),
+            common_enabled=self._section_enabled("common"),
             enabled_steps=self._get_checked_steps(),
+            post_enabled=self._section_enabled("post"),
             ios_enabled=self._section_enabled("ios", self._show_ios),
-            recipients=self.recipients_var.get().strip() or None if self.recipients_var else None,
             pub_upgrade=self._pub_mode.get() == "pub upgrade" if self._pub_mode else False,
             power_mode=self._power_mode.get() if self._power_mode else "Shutdown",
-            post_enabled=self._section_enabled("post"),
+            recipients=self.recipients_var.get().strip() or None if self.recipients_var else None,
             version=(self.version_var.get().strip() if self.version_var else ""),
             build=(self.build_var.get().strip() if self.build_var else ""),
         )

@@ -87,19 +87,6 @@ Values are saved to **`config.json`** and **`secrets/enviroment.json`**, applied
 
 ---
 
-## Shorebird
-
-When the Shorebird CLI is on `PATH`, each platform header gets a **Shorebird** toggle and **Release** / **Patch** mode.
-
-| Platform | Default |
-|:---|:---|
-| **Android** | Off (plain Flutter build) |
-| **iOS** | On when CLI is installed |
-
-If Shorebird is missing, the control shows *(not installed)* and stays disabled.
-
----
-
 ## Google Drive
 
 - Uploads **`outputs/`** to a Drive folder (link sharing as configured).
@@ -129,7 +116,6 @@ All environment configuration lives in **`secrets/enviroment.json`** (git-ignore
 | **iOS** *(Mac)* | Xcode · CocoaPods · signing + provisioning |
 | **Drive** | GCP project · Drive API · OAuth client JSON |
 | **App Store** | Connect API key (`.p8`) · Issuer ID · Key ID |
-| **Optional** | Shorebird CLI |
 
 ---
 

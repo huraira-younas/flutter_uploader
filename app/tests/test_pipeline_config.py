@@ -24,14 +24,14 @@ class PipelineConfigTests(unittest.TestCase):
         self.assertEqual("pre-release cleanup", cfg.commit_message_pre)
         self.assertEqual("v{version} ({build})", cfg.commit_message_release)
 
-    def test_step_filter_disables_appstore_for_patch_mode(self) -> None:
+    def test_step_filter_respects_enabled_steps_when_set(self) -> None:
         cfg = PipelineConfig(
-            ios_build_mode="patch",
             enabled_steps=frozenset({"appstore_upload", "build_ipa"}),
         )
         is_enabled = step_enabled_filter(cfg)
-        self.assertFalse(is_enabled("appstore_upload"))
+        self.assertTrue(is_enabled("appstore_upload"))
         self.assertTrue(is_enabled("build_ipa"))
+        self.assertFalse(is_enabled("build_apk"))
 
 
 if __name__ == "__main__":

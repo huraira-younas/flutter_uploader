@@ -17,18 +17,6 @@ def is_macos() -> bool:
     return _SYSTEM == "Darwin"
 
 
-def is_shorebird_available() -> bool:
-    """Return True if the `shorebird` CLI is reachable on PATH and exits cleanly."""
-    try:
-        kw: dict = {"capture_output": True, "timeout": 10}
-        if _SYSTEM == "Windows" and hasattr(subprocess, "CREATE_NO_WINDOW"):
-            kw["creationflags"] = subprocess.CREATE_NO_WINDOW
-        result = subprocess.run(["shorebird", "--version"], **kw)
-        return result.returncode == 0
-    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
-        return False
-
-
 def _schedule_power_action(label: str, action: Callable[[], None], log: LogFn) -> bool:
     log(f"{label} scheduled in {POWER_DELAY} seconds.\n")
     def _deferred():

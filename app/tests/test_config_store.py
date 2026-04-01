@@ -24,14 +24,6 @@ class ConfigStoreTests(unittest.TestCase):
         self.assertFalse(config_store.pipeline_section_enabled("post"))
         self.assertTrue(config_store.pipeline_section_enabled("ios", include_ios_default=False))
 
-    def test_shorebird_build_modes(self) -> None:
-        config_store._cache = {
-            "android": {"shorebird": True, "shorebird_mode": "Patch"},
-            "ios": {"shorebird": True, "shorebird_mode": "Release"},
-        }
-        self.assertEqual("patch", config_store.android_build_mode_from_config())
-        self.assertEqual("release", config_store.ios_build_mode_from_config())
-
     def test_get_section_returns_mutation_safe_copy(self) -> None:
         config_store._cache = {
             "common": {"enabled": True, "steps": {"clean": True}},

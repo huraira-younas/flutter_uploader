@@ -6,9 +6,16 @@ from collections.abc import Callable
 
 import customtkinter as ctk
 
-from gui.widgets import card, section_label, segmented_button
 from gui.sections.contracts import ConfigPanelHost
-from gui.theme import COLORS, RADIUS, PAD
+from gui.theme import COLORS, PAD, RADIUS
+from gui.widgets import section_label, card
+
+
+def _configure_state(widget, state: str) -> None:
+    try:
+        widget.configure(state=state)
+    except Exception:
+        pass
 
 
 def build_card(parent: ctk.CTkFrame, row: int) -> ctk.CTkFrame:
@@ -39,10 +46,7 @@ def build_prereq_banner(
 
 def disable_section_widgets(app: ConfigPanelHost, section_key: str) -> None:
     for w in app._section_widgets.get(section_key, []):
-        try:
-            w.configure(state="disabled")
-        except Exception:
-            pass
+        _configure_state(w, "disabled")
 
 
 def build_section_header(
@@ -52,19 +56,17 @@ def build_section_header(
     fonts: dict[str, ctk.CTkFont],
     section_key: str,
     app: ConfigPanelHost,
-    shorebird_bundle: tuple[ctk.BooleanVar, ctk.StringVar | None] | None = None,
     header_row: int = 0,
 ) -> None:
     header = ctk.CTkFrame(parent, fg_color="transparent")
-    header.grid(row=header_row, column=0, columnspan=2, sticky="ew", padx=PAD["lg"], pady=(PAD["md"], 5))
+    header.grid(
+        row=header_row, column=0, columnspan=2, sticky="ew",
+        padx=PAD["lg"], pady=(PAD["md"], PAD["sm"]),
+    )
     header.grid_columnconfigure(0, weight=1)
     section_label(header, title, fonts["section"]).grid(row=0, column=0, sticky="w")
 
     col = 1
-    if shorebird_bundle is not None:
-        sb_var, mode_var = shorebird_bundle
-        col = _shorebird_header_controls(header, section_key, sb_var, mode_var, fonts, app, col)
-
     enabled_var = app.section_enabled_vars.get(section_key)
     if enabled_var is not None:
         # Use ``_track`` only — never ``_track_section``: the Enabled switch must stay
@@ -78,57 +80,6 @@ def build_section_header(
             command=lambda sk=section_key: app._on_section_enabled_changed(sk),
         )
         app._track(sw).grid(row=0, column=col, sticky="e", padx=(0, PAD["md"]))
-
-
-def _shorebird_header_controls(
-    header: ctk.CTkFrame,
-    section_key: str,
-    shorebird_var: ctk.BooleanVar,
-    mode_var: ctk.StringVar | None,
-    fonts: dict[str, ctk.CTkFont],
-    app: ConfigPanelHost,
-    start_col: int,
-) -> int:
-    col = start_col
-    mode_seg: ctk.CTkSegmentedButton | None = None
-    if mode_var is not None:
-        mode_seg = segmented_button(
-            header, values=["Release", "Patch"],
-            variable=mode_var, font=fonts["body_sm"],
-            command=lambda _=None, sk=section_key: app._on_shorebird_mode_changed(sk),
-        )
-        mode_seg = app._track_section(section_key, mode_seg)
-        mode_seg.grid(row=0, column=col, sticky="e", padx=(0, PAD["sm"]))
-        app._sb_mode_widgets[section_key] = mode_seg
-        col += 1
-
-    cb = app._track_section(section_key, ctk.CTkCheckBox(
-        header, variable=shorebird_var, text="Shorebird",
-        font=fonts["body_sm"], checkbox_width=18, checkbox_height=18,
-        corner_radius=4, border_width=2,
-        command=lambda sk=section_key, sv=shorebird_var: app._on_shorebird_toggle(sk, sv),
-    ))
-    cb.grid(row=0, column=col, sticky="e", padx=(0, PAD["md"]))
-    app._sb_checkboxes[section_key] = cb
-    col += 1
-
-    if not app._shorebird_ok:
-        shorebird_var.set(False)
-        if mode_var is not None:
-            mode_var.set("Release")
-        if mode_seg is not None:
-            mode_seg.configure(state="disabled")
-        cb.configure(state="disabled")
-        hint = ctk.CTkLabel(
-            header, text="(Shorebird not installed)",
-            font=fonts["body_sm"], text_color=COLORS["muted"],
-        )
-        hint.grid(row=0, column=col, sticky="e", padx=(0, PAD["sm"]))
-        app._sb_hint_labels[section_key] = hint
-        col += 1
-    elif mode_seg is not None:
-        mode_seg.configure(state="normal" if shorebird_var.get() else "disabled")
-    return col
 
 
 def build_commit_message_row(
@@ -164,10 +115,12 @@ def add_step_row(
     grid_row: int,
     default_on: bool = True,
     var: ctk.BooleanVar | None = None,
+    pady: tuple[int, int] | None = None,
     trailing_widgets: Callable[[ctk.CTkFrame, int], int] | None = None,
 ) -> ctk.CTkSwitch:
     row_frame = ctk.CTkFrame(parent, fg_color="transparent")
-    row_frame.grid(row=grid_row, column=0, columnspan=2, sticky="ew", padx=PAD["lg"], pady=PAD["sm"])
+    pad_y = pady if pady is not None else (PAD["sm"], PAD["sm"])
+    row_frame.grid(row=grid_row, column=0, columnspan=2, sticky="ew", padx=PAD["lg"], pady=pad_y)
     row_frame.grid_columnconfigure(1, weight=1)
 
     if var is None:
@@ -217,13 +170,17 @@ def build_step_rows_from_defs(
 ) -> None:
     overrides = step_var_overrides or {}
     trailing = trailing_widgets_by_key or {}
+    n = len(steps)
     for offset, (key, label, desc, default_on) in enumerate(steps):
         var = overrides.get(key)
+        last = offset == n - 1
+        row_pady = (PAD["sm"], PAD["md"]) if last else (PAD["sm"], PAD["sm"])
         add_step_row(
             parent, app=app, key=key, label=label, desc=desc,
             section_key=section_key,
             grid_row=first_grid_row + offset,
             default_on=default_on, var=var,
+            pady=row_pady,
             trailing_widgets=trailing.get(key),
         )
 

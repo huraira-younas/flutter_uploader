@@ -16,11 +16,6 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
         return row
 
     state = get_section("ios")
-    app._shorebird_ios = ctk.BooleanVar(value=bool(state.get("shorebird", app._shorebird_ok)))
-    app._register_section_bool_var("ios", app._shorebird_ios)
-    mode = (state.get("shorebird_mode") or "Release")
-    app._ios_sb_mode = ctk.StringVar(value=mode if mode in ("Release", "Patch") else "Release")
-
     overrides = W.step_var_overrides(list(IOS_STEPS), state)
 
     ok_flutter, _ = P.flutter_project_prereq_status()
@@ -42,7 +37,6 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
     W.build_section_header(
         c, title="iOS Build", fonts=app._fonts,
         section_key="ios", app=app,
-        shorebird_bundle=(app._shorebird_ios, app._ios_sb_mode),
         header_row=off,
     )
     W.build_step_rows_from_defs(
@@ -57,8 +51,6 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
 
     def _serialize() -> dict:
         return {
-            "shorebird": app._shorebird_ios.get(),
-            "shorebird_mode": app._ios_sb_mode.get(),
             "steps": {k: app.step_vars[k].get() for k, _, _, _ in IOS_STEPS},
         }
 

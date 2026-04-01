@@ -13,11 +13,6 @@ from core.steps import ANDROID_STEPS
 
 def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int:
     state = get_section("android")
-    app._shorebird_android = ctk.BooleanVar(value=bool(state.get("shorebird", False)))
-    app._register_section_bool_var("android", app._shorebird_android)
-    mode = (state.get("shorebird_mode") or "Release")
-    app._android_sb_mode = ctk.StringVar(value=mode if mode in ("Release", "Patch") else "Release")
-
     overrides = W.step_var_overrides(list(ANDROID_STEPS), state)
 
     ok, _ = P.flutter_project_prereq_status()
@@ -26,7 +21,6 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
     W.build_section_header(
         c, title="Android Build", fonts=app._fonts,
         section_key="android", app=app,
-        shorebird_bundle=(app._shorebird_android, app._android_sb_mode),
         header_row=off,
     )
     W.build_step_rows_from_defs(
@@ -38,8 +32,6 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
 
     def _serialize() -> dict:
         return {
-            "shorebird": app._shorebird_android.get(),
-            "shorebird_mode": app._android_sb_mode.get(),
             "steps": {k: app.step_vars[k].get() for k, _, _, _ in ANDROID_STEPS},
         }
 

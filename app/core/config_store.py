@@ -16,13 +16,13 @@ import json
 import sys
 import os
 
-
 from core.constants import (
     DEFAULT_COMMIT_MESSAGE_RELEASE,
     DEFAULT_COMMIT_MESSAGE_PRE,
     UPLOADER_DIR,
     SECRETS_DIR,
 )
+
 # Canonical mapping between pipeline section aliases and persisted config keys.
 PIPELINE_SECTION_TO_CONFIG_SECTION: dict[str, str] = {
     "git_post": "post_git",
@@ -87,7 +87,7 @@ def default_app_config() -> dict[str, Any]:
         "pre_git": {
             "enabled": True,
             "commit_message": DEFAULT_COMMIT_MESSAGE_PRE,
-            "steps": {"git_commit_pre": True},
+            "steps": {"git_commit_pre": True, "git_pull": True},
         },
         "common": {
             "enabled": True,
@@ -97,18 +97,14 @@ def default_app_config() -> dict[str, Any]:
         "post_git": {
             "enabled": True,
             "commit_message": DEFAULT_COMMIT_MESSAGE_RELEASE,
-            "steps": {"git_pull": True, "git_commit_rel": True, "git_push": True},
+            "steps": {"git_commit_rel": True, "git_push": True},
         },
         "android": {
             "enabled": True,
-            "shorebird": False,
-            "shorebird_mode": "Release",
-            "steps": {"build_apk": True},
+            "steps": {"build_apk": True, "build_aab": False},
         },
         "ios": {
             "enabled": True,
-            "shorebird": False,
-            "shorebird_mode": "Release",
             "steps": {"pod_install": False, "build_ipa": True, "appstore_upload": True},
         },
         "post_build": {
@@ -273,20 +269,6 @@ def pipeline_section_enabled(name: str, *, include_ios_default: bool = True) -> 
 def pub_upgrade_from_config() -> bool:
     pm = str((get_app_config().get("common") or {}).get("pub_mode", "pub get")).lower()
     return pm == "pub upgrade"
-
-
-def _shorebird_build_mode(block: dict[str, Any]) -> str:
-    if block.get("shorebird"):
-        return "patch" if str(block.get("shorebird_mode", "")).lower() == "patch" else "release"
-    return "flutter"
-
-
-def android_build_mode_from_config() -> str:
-    return _shorebird_build_mode(get_app_config().get("android") or {})
-
-
-def ios_build_mode_from_config() -> str:
-    return _shorebird_build_mode(get_app_config().get("ios") or {})
 
 
 def _env_email_list(key: str) -> list[str]:

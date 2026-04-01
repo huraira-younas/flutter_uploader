@@ -23,7 +23,6 @@ Set the Flutter project root in the GUI (**App Info → Flutter project root**),
 |:---|:---|
 | `--version` · `--build` · `--recipients` · `--commit-message` | from pubspec / see `--help` |
 | `--pub-mode` | `pub-get` |
-| `--android-mode` · `--ios-mode` | `flutter` |
 | `--power-mode` | `shutdown` |
 | `--quit-after-power` | off |
 | `--android` / `--no-android` · `--ios` / `--no-ios` · `--git` / `--no-git` · `--post` / `--no-post` | sections on |
@@ -37,10 +36,9 @@ Set the Flutter project root in the GUI (**App Info → Flutter project root**),
 python3 run.py --help
 python3 run.py --list-steps
 python3 run.py --cli --no-git --no-post --no-ios \
-  --android-mode flutter --version 1.0.6 --build 65
-python3 run.py --cli --android-mode patch --no-ios --no-git
+  --version 1.0.6 --build 65
 python3 run.py --cli --steps clean,pub_get
-python3 run.py --cli --android-mode release --ios-mode release \
+python3 run.py --cli \
   --recipients "a@x.com,b@y.com" --commit-message "Release v2.0"
 python3 run.py --cli --no-ios
 ```
