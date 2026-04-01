@@ -6,15 +6,14 @@
 |:---|:---|
 | **Read Me (app)** | Tabs: **README** · **CLI** · **Environment** |
 | **CLI** | [`app/CLI_REFERENCE.md`](app/CLI_REFERENCE.md) |
-| **Secrets & setup** | [`app/ENVIRONMENT.md`](app/ENVIRONMENT.md) · optional `app/.env` |
+| **Secrets & setup** | [`app/ENVIRONMENT.md`](app/ENVIRONMENT.md) · `app/secrets/enviroment.json` |
 | **GUI settings** | **Settings** tab: **Environment** (paths, Drive, Gmail, recipients) + **Theme** |
 
 ---
 
 ## Quick start
 
-1. **Flutter project** — In **Settings → Environment**, set **Flutter project root** (folder that contains `pubspec.yaml`) and click **Save environment**.  
-   Optional: set **`FLUTTER_PROJECT_ROOT`** in `app/.env` to override for that run.
+1. **Flutter project** — In **Settings → Environment**, set **Flutter project root** (folder that contains `pubspec.yaml`) and click **Save environment**.
 
 2. Run the app from the repo:
 
@@ -63,7 +62,7 @@ Each pipeline section has an **Enabled** switch. Turning a section off skips its
 
 ### Environment
 
-Configure without editing `.env` (values are saved to **`app/config.json`** and applied for the current run):
+Values are saved to **`app/config.json`** and **`app/secrets/enviroment.json`**, applied for the current run:
 
 | Area | What |
 |:---|:---|
@@ -104,7 +103,7 @@ If Shorebird is missing, the control shows *(not installed)* and stays disabled.
 ## Google Drive
 
 - Uploads **`outputs/`** to a Drive folder (link sharing as configured).
-- Link appears in the **Console** tab; optional emails use Gmail + recipient lists from **Settings** or `.env`.
+- Link appears in the **Console** tab; optional emails use Gmail + recipient lists from **Settings**.
 - Needs OAuth **Desktop** client JSON (Drive API enabled). See [`ENVIRONMENT.md`](app/ENVIRONMENT.md).
 
 ---
@@ -112,13 +111,13 @@ If Shorebird is missing, the control shows *(not installed)* and stays disabled.
 ## App Store Connect *(Mac)*
 
 - IPA upload via **`xcrun altool`**.
-- API key **`.p8`** in `~/private_keys/` plus `APP_STORE_ISSUER_ID` and `APP_STORE_API_KEY` in `.env`.
+- API key **`.p8`** in `~/private_keys/` plus `APP_STORE_ISSUER_ID` and `APP_STORE_API_KEY` in **Settings → Environment**.
 
 ---
 
-## Environment file
+## Environment
 
-Copy **`app/.env.example`** → **`app/.env`** if you want file-based overrides. Full variable list: [`app/ENVIRONMENT.md`](app/ENVIRONMENT.md). Never commit `.env`.
+All environment configuration lives in **`app/secrets/enviroment.json`** (git-ignored). Edit it via **Settings → Environment → Save environment** or directly. Full variable list: [`app/ENVIRONMENT.md`](app/ENVIRONMENT.md).
 
 ---
 
