@@ -103,12 +103,6 @@ def _spans_plain(spans: list[_Span]) -> str:
     return "".join(s.text for s in spans).strip()
 
 
-# ── Inline plain (legacy, kept for _li_main_text / blockquote fallback) ───────
-
-def _inline_plain(el) -> str:
-    return _spans_plain(_collect_spans(el))
-
-
 # ── Import check ──────────────────────────────────────────────────────────────
 
 def _renderer_import_error() -> str | None:

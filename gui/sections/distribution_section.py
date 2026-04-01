@@ -39,8 +39,9 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
         font=app._fonts["body_sm"], text_color=COLORS["muted"],
     ).grid(row=1, column=0, sticky="w", padx=PAD["lg"], pady=(0, PAD["sm"]))
 
-    saved = (state.get("recipients") or "").strip()
-    current_emails = _parse_emails(saved)
+    current_emails = [str(v).strip() for v in state] if isinstance(state, list) else []
+    current_emails = [v for v in current_emails if v]
+    current_emails = _parse_emails(",".join(current_emails))
     preset_emails = DEFAULT_GMAIL_RECIPIENTS[:] if DEFAULT_GMAIL_RECIPIENTS else current_emails
     selected_defaults = {email.lower() for email in current_emails} if current_emails else {email.lower() for email in preset_emails}
 
@@ -91,9 +92,7 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
         selected = [email for email, var in preset_vars if var.get()]
         selected_set = {v.lower() for v in selected}
         extra = [email for email in _parse_emails(extra_raw) if email.lower() not in selected_set]
-        return {
-            "recipients": ",".join(selected + extra),
-        }
+        return selected + extra
 
     app._gui_config_serializers["distribution"] = _serialize
     return row + 1

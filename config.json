@@ -55,26 +55,13 @@
       "shutdown": false
     }
   },
-  "distribution": {
-    "recipients": "hurairayounas7@gmail.com,buttabdulhannan708@gmail.com,fazielshah@gmail.com,waqas6683@gmail.com,bilalshahjehanbajwa@gmail.com,faisalbiginc@gmail.com,alahmedwaqar@gmail.com",
-    "extra_recipients": "",
-    "selected_presets": [
-      "hurairayounas7@gmail.com",
-      "buttabdulhannan708@gmail.com",
-      "fazielshah@gmail.com",
-      "waqas6683@gmail.com",
-      "bilalshahjehanbajwa@gmail.com",
-      "faisalbiginc@gmail.com",
-      "alahmedwaqar@gmail.com"
-    ],
-    "preset_recipients": [
-      "hurairayounas7@gmail.com",
-      "buttabdulhannan708@gmail.com",
-      "fazielshah@gmail.com",
-      "waqas6683@gmail.com",
-      "bilalshahjehanbajwa@gmail.com",
-      "faisalbiginc@gmail.com",
-      "alahmedwaqar@gmail.com"
-    ]
-  }
+  "distribution": [
+    "hurairayounas7@gmail.com",
+    "buttabdulhannan708@gmail.com",
+    "fazielshah@gmail.com",
+    "waqas6683@gmail.com",
+    "bilalshahjehanbajwa@gmail.com",
+    "faisalbiginc@gmail.com",
+    "alahmedwaqar@gmail.com"
+  ]
 }

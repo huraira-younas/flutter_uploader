@@ -70,7 +70,7 @@ class BuildApp(ctk.CTk):
         self._sb_mode_widgets: dict[str, ctk.CTkSegmentedButton] = {}
         self._sb_checkboxes: dict[str, ctk.CTkCheckBox] = {}
         self._sb_hint_labels: dict[str, ctk.CTkLabel] = {}
-        self._gui_config_serializers: dict[str, Callable[[], dict[str, Any]]] = {}
+        self._gui_config_serializers: dict[str, Callable[[], Any]] = {}
         self.section_enabled_vars: dict[str, ctk.BooleanVar] = {
             "git_pre": ctk.BooleanVar(value=pipeline_section_enabled("git_pre")),
             "common": ctk.BooleanVar(value=pipeline_section_enabled("common")),

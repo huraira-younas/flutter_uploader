@@ -130,9 +130,6 @@ class ConsolePanel(ctk.CTkFrame):
     def append(self, text: str):
         self._insert(text, self.classify(text))
 
-    def append_tagged(self, text: str, tag: str):
-        self._insert(text, tag)
-
     def batch_insert(self, items: list[tuple[str, str]]):
         """Insert multiple (text, tag) pairs, coalescing consecutive same-tag entries."""
         if not items:

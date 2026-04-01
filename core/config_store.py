@@ -93,8 +93,23 @@ def default_app_config() -> dict[str, Any]:
             "quit_after_power": False,
             "steps": {"open_folders": False, "drive_upload": True, "shutdown": False},
         },
-        "distribution": {"recipients": ""},
+        "distribution": [],
     }
+
+
+def _parse_recipients(items: list[str]) -> list[str]:
+    out: list[str] = []
+    seen: set[str] = set()
+    for raw in items:
+        email = str(raw).strip()
+        if not email:
+            continue
+        lowered = email.lower()
+        if lowered in seen:
+            continue
+        seen.add(lowered)
+        out.append(email)
+    return out
 
 
 def _read_merged_from_disk() -> dict[str, Any]:
@@ -137,13 +152,15 @@ def get_app_config() -> dict[str, Any]:
     return _cache
 
 
-def get_section(name: str) -> dict[str, Any]:
-    """Return a deep copy of one top-level section (safe for mutation)."""
+def get_section(name: str) -> Any:
+    """Return a deep copy of one top-level section."""
     full = get_app_config()
     base_chunk = default_app_config().get(name, {})
     chunk = full.get(name, {})
     if isinstance(chunk, dict):
         return deep_merge(copy.deepcopy(base_chunk), copy.deepcopy(chunk))
+    if isinstance(base_chunk, list) and isinstance(chunk, list):
+        return copy.deepcopy(chunk)
     return copy.deepcopy(base_chunk)
 
 
@@ -217,3 +234,18 @@ def android_build_mode_from_config() -> str:
 
 def ios_build_mode_from_config() -> str:
     return _shorebird_build_mode(get_app_config().get("ios") or {})
+
+
+def distribution_recipients_from_config() -> list[str]:
+    block = get_app_config().get("distribution")
+    if isinstance(block, list):
+        return _parse_recipients([str(v) for v in block])
+    if isinstance(block, dict):
+        raw = str(block.get("recipients") or "")
+        return _parse_recipients(raw.split(","))
+    return []
+
+
+def distribution_recipients_csv_from_config() -> str | None:
+    recipients = distribution_recipients_from_config()
+    return ",".join(recipients) if recipients else None

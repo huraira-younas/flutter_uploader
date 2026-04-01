@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 
 from core.config_store import (
+    distribution_recipients_csv_from_config,
     android_build_mode_from_config,
     enabled_step_keys_from_config,
     ios_build_mode_from_config,
@@ -37,7 +38,7 @@ def resolve_cli_pipeline_config(args: argparse.Namespace, *, include_ios: bool) 
 
     recipients = args.recipients
     if recipients is None:
-        recipients = (cfg_file.get("distribution") or {}).get("recipients") or None
+        recipients = distribution_recipients_csv_from_config()
     if isinstance(recipients, str):
         recipients = recipients.strip() or None
 

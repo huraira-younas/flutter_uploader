@@ -13,7 +13,7 @@ class ConfigPanelHost(Protocol):
     _shorebird_ok: bool
     _show_ios: bool
 
-    _gui_config_serializers: dict[str, Callable[[], dict[str, Any]]]
+    _gui_config_serializers: dict[str, Callable[[], Any]]
     _section_bool_vars: dict[str, list[ctk.BooleanVar]]
     _sb_mode_widgets: dict[str, ctk.CTkSegmentedButton]
     section_enabled_vars: dict[str, ctk.BooleanVar]

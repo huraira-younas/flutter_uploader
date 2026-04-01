@@ -17,10 +17,6 @@ def is_macos() -> bool:
     return _SYSTEM == "Darwin"
 
 
-def is_windows() -> bool:
-    return _SYSTEM == "Windows"
-
-
 def is_shorebird_available() -> bool:
     """Return True if the `shorebird` CLI is reachable on PATH and exits cleanly."""
     try:

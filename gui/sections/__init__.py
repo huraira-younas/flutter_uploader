@@ -35,7 +35,7 @@ def mount_config_panel(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame) -> 
 
 
 def collect_gui_config(app: ConfigPanelHost) -> dict:
-    parts: dict[str, dict] = {}
+    parts: dict[str, object] = {}
     for key, fn in app._gui_config_serializers.items():
         parts[key] = fn()
     for section_alias, section_var in app.section_enabled_vars.items():

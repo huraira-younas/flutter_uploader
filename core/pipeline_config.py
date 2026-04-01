@@ -191,11 +191,6 @@ def parse_step_keys_csv(steps_arg: str) -> list[str]:
     return [k.strip() for k in steps_arg.split(",") if k.strip()]
 
 
-def validate_step_keys(keys: list[str]) -> list[str]:
-    """Backward-compatible alias for ``find_invalid_step_keys``."""
-    return find_invalid_step_keys(keys)
-
-
 def validate_build_mode(mode: str, label: str) -> str:
     normalized = mode.lower()
     if normalized not in VALID_BUILD_MODES:
