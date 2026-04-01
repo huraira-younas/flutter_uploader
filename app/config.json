@@ -21,7 +21,7 @@
     }
   },
   "common": {
-    "enabled": false,
+    "enabled": true,
     "pub_mode": "pub get",
     "steps": {
       "clean": false,
@@ -29,7 +29,7 @@
     }
   },
   "post_git": {
-    "enabled": false,
+    "enabled": true,
     "commit_message": "v{version} ({build})",
     "steps": {
       "git_pull": false,
@@ -38,7 +38,7 @@
     }
   },
   "android": {
-    "enabled": false,
+    "enabled": true,
     "shorebird": false,
     "shorebird_mode": "Release",
     "steps": {
@@ -46,7 +46,7 @@
     }
   },
   "ios": {
-    "enabled": false,
+    "enabled": true,
     "shorebird": false,
     "shorebird_mode": "Release",
     "steps": {
@@ -56,7 +56,7 @@
     }
   },
   "post_build": {
-    "enabled": false,
+    "enabled": true,
     "power_mode": "Sleep",
     "quit_after_power": false,
     "steps": {
@@ -66,9 +66,9 @@
     }
   },
   "distribution": [
-    "hurairayounas7@gmail.com",
     "bilalshahjehanbajwa@gmail.com",
     "buttabdulhannan708@gmail.com",
+    "hurairayounas7@gmail.com",
     "faisalbiginc@gmail.com",
     "alahmedwaqar@gmail.com",
     "fazielshah@gmail.com",
