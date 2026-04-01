@@ -25,11 +25,11 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
         section_key="git_pre", app=app,
     )
     W.build_commit_message_row(
-        c, row=1, label_text="Commit message:", msg_var=app._commit_msg_pre,
+        c, row=1, label_text="Commit message:", section_key="git_pre", msg_var=app._commit_msg_pre,
         fonts=app._fonts, app=app,
     )
     W.build_step_rows_from_defs(
-        c, app=app, steps=list(COMMIT_PRE_STEPS),
+        c, app=app, section_key="git_pre", steps=list(COMMIT_PRE_STEPS),
         first_grid_row=2, step_var_overrides=overrides,
     )
 

@@ -16,6 +16,7 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
 
     state = get_section("ios")
     app._shorebird_ios = ctk.BooleanVar(value=bool(state.get("shorebird", app._shorebird_ok)))
+    app._register_section_bool_var("ios", app._shorebird_ios)
     mode = (state.get("shorebird_mode") or "Release")
     app._ios_sb_mode = ctk.StringVar(value=mode if mode in ("Release", "Patch") else "Release")
 
@@ -28,7 +29,7 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
         shorebird_bundle=(app._shorebird_ios, app._ios_sb_mode),
     )
     W.build_step_rows_from_defs(
-        c, app=app, steps=list(IOS_STEPS),
+        c, app=app, section_key="ios", steps=list(IOS_STEPS),
         first_grid_row=1, step_var_overrides=overrides,
     )
 

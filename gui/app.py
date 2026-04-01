@@ -71,6 +71,33 @@ class BuildApp(ctk.CTk):
         self._sb_checkboxes: dict[str, ctk.CTkCheckBox] = {}
         self._sb_hint_labels: dict[str, ctk.CTkLabel] = {}
         self._gui_config_serializers: dict[str, Callable[[], dict[str, Any]]] = {}
+        self.section_enabled_vars: dict[str, ctk.BooleanVar] = {
+            "git_pre": ctk.BooleanVar(value=pipeline_section_enabled("git_pre")),
+            "common": ctk.BooleanVar(value=pipeline_section_enabled("common")),
+            "git_post": ctk.BooleanVar(value=pipeline_section_enabled("git_post")),
+            "android": ctk.BooleanVar(value=pipeline_section_enabled("android")),
+            "ios": ctk.BooleanVar(
+                value=pipeline_section_enabled("ios", include_ios_default=self._show_ios),
+            ),
+            "post": ctk.BooleanVar(value=pipeline_section_enabled("post")),
+        }
+        self._section_widgets: dict[str, list[Any]] = {
+            "git_pre": [],
+            "common": [],
+            "git_post": [],
+            "android": [],
+            "ios": [],
+            "post": [],
+        }
+        self._section_var_snapshots: dict[str, list[bool]] = {}
+        self._section_bool_vars: dict[str, list[ctk.BooleanVar]] = {
+            "git_pre": [],
+            "common": [],
+            "git_post": [],
+            "android": [],
+            "ios": [],
+            "post": [],
+        }
 
         self.step_progress_bars: dict[str, ctk.CTkProgressBar] = {}
         self.step_status_labels: dict[str, ctk.CTkLabel] = {}
@@ -118,12 +145,20 @@ class BuildApp(ctk.CTk):
 
         self._build_ui()
         self._pipeline_runner = PipelineRunner()
+        self._apply_section_enabled_states()
         self._apply_ios_mode_rules()
         self._start_queue_polling()
 
     def _track(self, widget):
         self._lockable_widgets.append(widget)
         return widget
+
+    def _track_section(self, section_key: str, widget):
+        self._section_widgets.setdefault(section_key, []).append(widget)
+        return self._track(widget)
+
+    def _register_section_bool_var(self, section_key: str, var: ctk.BooleanVar) -> None:
+        self._section_bool_vars.setdefault(section_key, []).append(var)
 
     # ── UI construction ───────────────────────────────────────────────────────
 
@@ -238,6 +273,27 @@ class BuildApp(ctk.CTk):
         if section_key == "ios":
             self._apply_ios_mode_rules()
 
+    def _on_section_enabled_changed(self, section_key: str) -> None:
+        vars_list = self._section_bool_vars.get(section_key, [])
+        if self._section_enabled(section_key):
+            snapshot = self._section_var_snapshots.get(section_key)
+            if snapshot:
+                for idx, section_var in enumerate(vars_list):
+                    if idx < len(snapshot):
+                        section_var.set(bool(snapshot[idx]))
+                self._section_var_snapshots.pop(section_key, None)
+        else:
+            self._section_var_snapshots[section_key] = [bool(section_var.get()) for section_var in vars_list]
+            for section_var in vars_list:
+                section_var.set(False)
+        self._apply_section_enabled_states()
+        if section_key == "ios":
+            self._apply_ios_mode_rules()
+
+    def _section_enabled(self, section_key: str, fallback: bool = True) -> bool:
+        var = self.section_enabled_vars.get(section_key)
+        return bool(var.get()) if var is not None else fallback
+
     def _apply_ios_mode_rules(self) -> None:
         """Enforce UI-only rules derived from current iOS build mode selection."""
         if not self._show_ios:
@@ -250,7 +306,7 @@ class BuildApp(ctk.CTk):
 
         shorebird_on = bool(self._shorebird_ios and self._shorebird_ios.get())
         ios_mode = (self._ios_sb_mode.get() if self._ios_sb_mode else "Release").lower()
-        ios_enabled = pipeline_section_enabled("ios", include_ios_default=self._show_ios)
+        ios_enabled = self._section_enabled("ios", self._show_ios)
 
         patch_mode = shorebird_on and ios_mode == "patch"
         if patch_mode:
@@ -426,7 +482,18 @@ class BuildApp(ctk.CTk):
             self._on_shorebird_toggle("android", self._shorebird_android)
         if self._shorebird_ios:
             self._on_shorebird_toggle("ios", self._shorebird_ios)
+        self._apply_section_enabled_states()
         self._apply_ios_mode_rules()
+
+    def _apply_section_enabled_states(self) -> None:
+        for section_key, widgets in self._section_widgets.items():
+            enabled = self._section_enabled(section_key)
+            state = "normal" if enabled and not self.is_busy else "disabled"
+            for widget in widgets:
+                try:
+                    widget.configure(state=state)
+                except Exception:
+                    pass
 
     # ── Step collection (delegates to shared pipeline_config) ────────────────
 
@@ -442,17 +509,17 @@ class BuildApp(ctk.CTk):
             commit_message_pre=self._commit_msg_pre.get().strip() if self._commit_msg_pre else None,
             android_build_mode=self._resolve_build_mode(self._shorebird_android, self._android_sb_mode),
             quit_after_power=self._quit_after_power.get() if self._quit_after_power else False,
-            git_post_enabled=pipeline_section_enabled("git_post"),
-            git_pre_enabled=pipeline_section_enabled("git_pre"),
-            common_enabled=pipeline_section_enabled("common"),
-            android_enabled=pipeline_section_enabled("android"),
+            git_post_enabled=self._section_enabled("git_post"),
+            git_pre_enabled=self._section_enabled("git_pre"),
+            common_enabled=self._section_enabled("common"),
+            android_enabled=self._section_enabled("android"),
             ios_build_mode=self._resolve_build_mode(self._shorebird_ios, self._ios_sb_mode),
             enabled_steps=self._get_checked_steps(),
-            ios_enabled=pipeline_section_enabled("ios", include_ios_default=self._show_ios),
+            ios_enabled=self._section_enabled("ios", self._show_ios),
             recipients=self.recipients_var.get().strip() or None if self.recipients_var else None,
             pub_upgrade=self._pub_mode.get() == "pub upgrade" if self._pub_mode else False,
             power_mode=self._power_mode.get() if self._power_mode else "Shutdown",
-            post_enabled=pipeline_section_enabled("post"),
+            post_enabled=self._section_enabled("post"),
             version=(self.version_var.get().strip() if self.version_var else ""),
             build=(self.build_var.get().strip() if self.build_var else ""),
         )

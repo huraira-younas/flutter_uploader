@@ -5,7 +5,12 @@ from __future__ import annotations
 from collections.abc import Callable
 import customtkinter as ctk
 
-from core.config_store import deep_merge, get_app_config, save_config
+from core.config_store import (
+    deep_merge,
+    get_app_config,
+    save_config,
+    PIPELINE_SECTION_TO_CONFIG_SECTION,
+)
 from gui.sections.contracts import ConfigPanelHost
 from . import android_section, app_info, common_section, distribution_section, ios_section, post_build_section, post_git, pre_git
 
@@ -22,12 +27,10 @@ _SECTION_MOUNTS: tuple[tuple[str, Callable[[ConfigPanelHost, ctk.CTkScrollableFr
 
 def mount_config_panel(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame) -> None:
     app._gui_config_serializers.clear()
-    full = get_app_config()
     row = 0
     row = app_info.mount(app, scroll, row)
     for section_key, mount_fn in _SECTION_MOUNTS:
-        if full.get(section_key, {}).get("enabled", True):
-            row = mount_fn(app, scroll, row)
+        row = mount_fn(app, scroll, row)
     row = distribution_section.mount(app, scroll, row)
 
 
@@ -35,6 +38,10 @@ def collect_gui_config(app: ConfigPanelHost) -> dict:
     parts: dict[str, dict] = {}
     for key, fn in app._gui_config_serializers.items():
         parts[key] = fn()
+    for section_alias, section_var in app.section_enabled_vars.items():
+        config_key = PIPELINE_SECTION_TO_CONFIG_SECTION.get(section_alias, section_alias)
+        section_patch = parts.setdefault(config_key, {})
+        section_patch["enabled"] = bool(section_var.get())
     return deep_merge(get_app_config(), parts)
 
 

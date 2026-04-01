@@ -13,6 +13,7 @@ from core.steps import ANDROID_STEPS
 def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int:
     state = get_section("android")
     app._shorebird_android = ctk.BooleanVar(value=bool(state.get("shorebird", False)))
+    app._register_section_bool_var("android", app._shorebird_android)
     mode = (state.get("shorebird_mode") or "Release")
     app._android_sb_mode = ctk.StringVar(value=mode if mode in ("Release", "Patch") else "Release")
 
@@ -25,7 +26,7 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
         shorebird_bundle=(app._shorebird_android, app._android_sb_mode),
     )
     W.build_step_rows_from_defs(
-        c, app=app, steps=list(ANDROID_STEPS),
+        c, app=app, section_key="android", steps=list(ANDROID_STEPS),
         first_grid_row=1, step_var_overrides=overrides,
     )
 

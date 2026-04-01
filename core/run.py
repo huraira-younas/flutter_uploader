@@ -38,7 +38,8 @@ def _log_noop(_: str) -> None:
 def _git_add_and_commit(message: str, log: LogFn) -> bool:
     if not _cmd().run_project(["git", "add", "."], log):
         return False
-    return _cmd().run_project(["git", "commit", "-m", message], log)
+    _cmd().run_project(["git", "commit", "-m", message], log)
+    return True
 
 
 def _remove_dir_if_exists(path: os.PathLike[str], log: LogFn, label: str) -> bool:
@@ -84,14 +85,16 @@ def run_flutter_pub_upgrade(log: LogFn = _log_noop, stop_check: StopCheckFn | No
 
 def run_git_commit_pre(message: str, log: LogFn = _log_noop) -> bool:
     log(f'\n>> git add . && git commit -m "{message}"\n')
-    return _git_add_and_commit(message, log)
+    _git_add_and_commit(message, log)
+    return True
 
 
 def run_git_pull(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
-    return _run_project_cmd(
+    _run_project_cmd(
         ["git", "pull", "origin", "master"], log,
         header="\n>> git pull origin master\n", stop_check=stop_check,
     )
+    return True
 
 
 def format_release_commit_message(template: str, version: str, build: str) -> str:
@@ -107,14 +110,16 @@ def format_release_commit_message(template: str, version: str, build: str) -> st
 
 def run_git_commit_release(message: str, log: LogFn = _log_noop) -> bool:
     log(f'\n>> git add . && git commit -m "{message}"\n')
-    return _git_add_and_commit(message, log)
+    _git_add_and_commit(message, log)
+    return True
 
 
 def run_git_push(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
-    return _run_project_cmd(
+    _run_project_cmd(
         ["git", "push", "origin", "master"], log,
         header="\n>> git push origin master\n", stop_check=stop_check,
     )
+    return True
 
 
 def run_build_apk(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
@@ -327,7 +332,6 @@ def _build_runners(
 
     return {
         "drive_upload":    lambda l: run_drive_upload(recipients, version, build, l, stop_check=stop_check),
-        "appstore_upload": _appstore_runner,
         "git_commit_rel":  lambda l: run_git_commit_release(release_msg, l),
         "git_commit_pre":  lambda l: run_git_commit_pre(commit_message, l),
         "open_folders":    lambda l: run_open_outputs(l),
@@ -341,6 +345,7 @@ def _build_runners(
         
         "build_apk":       _build_apk_and_collect,
         "build_ipa":       _build_ipa_and_collect,
+        "appstore_upload": _appstore_runner,
     }
 
 

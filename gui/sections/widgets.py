@@ -36,6 +36,17 @@ def build_section_header(
         sb_var, mode_var = shorebird_bundle
         col = _shorebird_header_controls(header, section_key, sb_var, mode_var, fonts, app, col)
 
+    enabled_var = app.section_enabled_vars.get(section_key)
+    if enabled_var is not None:
+        app._track(ctk.CTkSwitch(
+            header,
+            text="Enabled",
+            variable=enabled_var,
+            font=fonts["body_sm"],
+            progress_color=COLORS["accent"],
+            command=lambda sk=section_key: app._on_section_enabled_changed(sk),
+        )).grid(row=0, column=col, sticky="e", padx=(0, PAD["md"]))
+
 
 def _shorebird_header_controls(
     header: ctk.CTkFrame,
@@ -54,16 +65,17 @@ def _shorebird_header_controls(
             variable=mode_var, font=fonts["body_sm"],
             command=lambda _=None, sk=section_key: app._on_shorebird_mode_changed(sk),
         )
+        mode_seg = app._track_section(section_key, mode_seg)
         mode_seg.grid(row=0, column=col, sticky="e", padx=(0, PAD["sm"]))
         app._sb_mode_widgets[section_key] = mode_seg
         col += 1
 
-    cb = ctk.CTkCheckBox(
+    cb = app._track_section(section_key, ctk.CTkCheckBox(
         header, variable=shorebird_var, text="Shorebird",
         font=fonts["body_sm"], checkbox_width=18, checkbox_height=18,
         corner_radius=4, border_width=2,
         command=lambda sk=section_key, sv=shorebird_var: app._on_shorebird_toggle(sk, sv),
-    )
+    ))
     cb.grid(row=0, column=col, sticky="e", padx=(0, PAD["md"]))
     app._sb_checkboxes[section_key] = cb
     col += 1
@@ -89,6 +101,7 @@ def build_commit_message_row(
     *,
     row: int,
     label_text: str,
+    section_key: str,
     msg_var: ctk.StringVar,
     fonts: dict[str, ctk.CTkFont],
     app: ConfigPanelHost,
@@ -98,7 +111,7 @@ def build_commit_message_row(
     cm.grid_columnconfigure(1, weight=1)
     lbl = ctk.CTkLabel(cm, text=label_text, font=fonts["body_sm"])
     lbl.grid(row=0, column=0, sticky="w")
-    ent = app._track(ctk.CTkEntry(
+    ent = app._track_section(section_key, ctk.CTkEntry(
         cm, textvariable=msg_var, corner_radius=RADIUS["input"], border_width=1,
     ))
     ent.grid(row=0, column=1, sticky="ew", padx=(PAD["sm"], 0))
@@ -112,6 +125,7 @@ def add_step_row(
     key: str,
     label: str,
     desc: str,
+    section_key: str,
     grid_row: int,
     default_on: bool = True,
     var: ctk.BooleanVar | None = None,
@@ -124,7 +138,8 @@ def add_step_row(
     if var is None:
         var = ctk.BooleanVar(value=default_on)
     app.step_vars[key] = var
-    switch = app._track(ctk.CTkSwitch(
+    app._register_section_bool_var(section_key, var)
+    switch = app._track_section(section_key, ctk.CTkSwitch(
         row_frame, progress_color=COLORS["accent"],
         text=f"{label}  —  {desc}", font=app._fonts["body"], variable=var,
     ))
@@ -159,6 +174,7 @@ def build_step_rows_from_defs(
     parent: ctk.CTkFrame,
     *,
     app: ConfigPanelHost,
+    section_key: str,
     steps: list[tuple[str, str, str, bool]],
     first_grid_row: int,
     step_var_overrides: dict[str, ctk.BooleanVar] | None = None,
@@ -170,6 +186,7 @@ def build_step_rows_from_defs(
         var = overrides.get(key)
         add_step_row(
             parent, app=app, key=key, label=label, desc=desc,
+            section_key=section_key,
             grid_row=first_grid_row + offset,
             default_on=default_on, var=var,
             trailing_widgets=trailing.get(key),

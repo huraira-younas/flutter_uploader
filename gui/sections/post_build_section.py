@@ -19,6 +19,7 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
         value=pm if pm in ("Shutdown", "Sleep") else "Shutdown",
     )
     app._quit_after_power = ctk.BooleanVar(value=bool(state.get("quit_after_power", False)))
+    app._register_section_bool_var("post", app._quit_after_power)
 
     overrides = W.step_var_overrides(list(POST_STEPS), state)
 
@@ -28,7 +29,7 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
         section_key="post", app=app,
     )
     W.build_step_rows_from_defs(
-        c, app=app, steps=list(POST_STEPS),
+        c, app=app, section_key="post", steps=list(POST_STEPS),
         first_grid_row=1, step_var_overrides=overrides,
         trailing_widgets_by_key={"shutdown": _shutdown_controls(app)},
     )
@@ -46,11 +47,11 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
 
 def _shutdown_controls(app: ConfigPanelHost):
     def _build(parent: ctk.CTkFrame, start_col: int) -> int:
-        app._track(segmented_button(
+        app._track_section("post", segmented_button(
             parent, values=["Shutdown", "Sleep"],
             variable=app._power_mode, font=app._fonts["body_sm"],
         )).grid(row=0, column=start_col, padx=PAD["sm"])
-        qcb = app._track(ctk.CTkCheckBox(
+        qcb = app._track_section("post", ctk.CTkCheckBox(
             parent,
             text="Quit app after countdown",
             variable=app._quit_after_power,

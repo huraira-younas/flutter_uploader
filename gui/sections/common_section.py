@@ -34,6 +34,7 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
         else:
             W.add_step_row(
                 c, app=app, key=key, label=label, desc=desc,
+                section_key="common",
                 grid_row=grid_r, default_on=_def,
                 var=overrides[key],
             )
@@ -53,6 +54,7 @@ def _build_pub_row(app: ConfigPanelHost, parent: ctk.CTkFrame, grid_row: int, pu
         parent,
         app=app,
         key="pub_get",
+        section_key="common",
         label="Dependencies",
         desc="pub get or pub upgrade",
         grid_row=grid_row,
@@ -64,7 +66,7 @@ def _build_pub_row(app: ConfigPanelHost, parent: ctk.CTkFrame, grid_row: int, pu
 
 def _pub_mode_controls(app: ConfigPanelHost):
     def _build(parent: ctk.CTkFrame, start_col: int) -> int:
-        pub_seg = app._track(segmented_button(
+        pub_seg = app._track_section("common", segmented_button(
             parent, values=["pub get", "pub upgrade"],
             variable=app._pub_mode, font=app._fonts["body_sm"],
         ))
