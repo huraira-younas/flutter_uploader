@@ -20,7 +20,7 @@
     }
   },
   "post_git": {
-    "enabled": true,
+    "enabled": false,
     "commit_message": "v{version} ({build})",
     "steps": {
       "git_pull": false,
@@ -29,7 +29,7 @@
     }
   },
   "android": {
-    "enabled": true,
+    "enabled": false,
     "shorebird": false,
     "shorebird_mode": "Release",
     "steps": {

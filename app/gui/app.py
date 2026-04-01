@@ -333,18 +333,19 @@ class BuildApp(ctk.CTk):
 
     def _on_section_enabled_changed(self, section_key: str) -> None:
         vars_list = self._section_bool_vars.get(section_key, [])
-        if self._section_enabled(section_key):
-            snapshot = self._section_var_snapshots.get(section_key)
+        enabling = self._section_enabled(section_key)
+        if enabling:
+            snapshot = self._section_var_snapshots.pop(section_key, None)
             if snapshot:
                 for idx, section_var in enumerate(vars_list):
                     if idx < len(snapshot):
                         section_var.set(bool(snapshot[idx]))
-                self._section_var_snapshots.pop(section_key, None)
+            self._set_section_widget_state(section_key, "normal")
         else:
-            self._section_var_snapshots[section_key] = [bool(section_var.get()) for section_var in vars_list]
+            self._section_var_snapshots[section_key] = [bool(v.get()) for v in vars_list]
+            self._set_section_widget_state(section_key, "disabled")
             for section_var in vars_list:
                 section_var.set(False)
-        self._apply_section_enabled_states()
         if section_key == "ios":
             self._apply_ios_mode_rules()
 
@@ -570,22 +571,29 @@ class BuildApp(ctk.CTk):
         self._apply_section_enabled_states()
         self._apply_ios_mode_rules()
 
+    def _set_section_widget_state(self, section_key: str, state: str) -> None:
+        """Apply *state* to all tracked widgets in a single section, then
+        re-apply prereq overrides for any steps disabled by missing config."""
+        for widget in self._section_widgets.get(section_key, []):
+            try:
+                widget.configure(state=state)
+            except Exception:
+                pass
+        if state == "normal":
+            for step_key in self._steps_disabled_by_prereq:
+                sw = self.step_switches.get(step_key)
+                if sw:
+                    try:
+                        sw.configure(state="disabled")
+                    except Exception:
+                        pass
+
     def _apply_section_enabled_states(self) -> None:
-        for section_key, widgets in self._section_widgets.items():
+        """Bulk-apply enabled/disabled across all sections (used after full rebuild)."""
+        for section_key in self._section_widgets:
             enabled = self._section_enabled(section_key)
             state = "normal" if enabled and not self.is_busy else "disabled"
-            for widget in widgets:
-                try:
-                    widget.configure(state=state)
-                except Exception:
-                    pass
-        for step_key in self._steps_disabled_by_prereq:
-            sw = self.step_switches.get(step_key)
-            if sw:
-                try:
-                    sw.configure(state="disabled")
-                except Exception:
-                    pass
+            self._set_section_widget_state(section_key, state)
 
     # ── Step collection (delegates to shared pipeline_config) ────────────────
 
