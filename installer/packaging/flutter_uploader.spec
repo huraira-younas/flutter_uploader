@@ -10,6 +10,8 @@ ROOT = Path(SPECPATH).parent.parent
 
 block_cipher = None
 
+# Bundled for _MEIPASS; build_win.ps1 / build_mac.sh also copy these next to the
+# built binaries because frozen UPLOADER_DIR is the exe directory, not the bundle.
 datas = [
     (str(ROOT / "README.md"), "."),
     (str(ROOT / "app" / "config.json"), "."),

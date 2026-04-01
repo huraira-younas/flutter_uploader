@@ -24,6 +24,24 @@ rm -rf dist-installer
 
 pyinstaller -y installer/packaging/flutter_uploader.spec
 
+# Frozen builds resolve UPLOADER_DIR to the folder containing the binary. The GUI
+# .app runs from Contents/MacOS; the CLI binary sits in dist/. Copy docs beside both.
+DIST_DIR="${ROOT_DIR}/dist"
+MACOS_DIR="${DIST_DIR}/FlutterUploader.app/Contents/MacOS"
+for pair in \
+  "README.md:README.md" \
+  "app/ENVIRONMENT.md:ENVIRONMENT.md" \
+  "app/CLI_REFERENCE.md:CLI_REFERENCE.md"; do
+  src="${ROOT_DIR}/${pair%%:*}"
+  base="${pair#*:}"
+  if [[ ! -f "${src}" ]]; then
+    echo "Missing required file: ${src}" >&2
+    exit 1
+  fi
+  cp "${src}" "${DIST_DIR}/${base}"
+  cp "${src}" "${MACOS_DIR}/${base}"
+done
+
 echo
 echo "Built:"
 echo "  dist/FlutterUploader.app"

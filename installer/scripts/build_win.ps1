@@ -26,6 +26,21 @@ if (Test-Path dist-installer) { Remove-Item -Recurse -Force dist-installer }
 
 pyinstaller -y installer\packaging\flutter_uploader.spec
 
+# Frozen builds resolve UPLOADER_DIR to the folder containing the .exe; bundled
+# datas live inside the archive, so docs must sit next to the executables.
+$DistDir = Join-Path $RootDir "dist"
+@(
+    @{ Src = "README.md"; Name = "README.md" }
+    @{ Src = "app\ENVIRONMENT.md"; Name = "ENVIRONMENT.md" }
+    @{ Src = "app\CLI_REFERENCE.md"; Name = "CLI_REFERENCE.md" }
+) | ForEach-Object {
+    $src = Join-Path $RootDir $_.Src
+    if (-not (Test-Path -LiteralPath $src)) {
+        Write-Error "Missing required file: $src"
+    }
+    Copy-Item -LiteralPath $src -Destination (Join-Path $DistDir $_.Name) -Force
+}
+
 Write-Host ""
 Write-Host "Built:"
 Write-Host "  dist\FlutterUploader.exe"
