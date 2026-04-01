@@ -3,24 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
 from threading import Thread
+from typing import Any
 import tkinter as tk
 import atexit
 import queue
-import sys
 import time
-
-from core.constants import APP_TITLE, APP_VERSION
-from core.bootstrap import ensure_dependencies
-from core.steps import StepDef
-
-from core.pipeline_config import (
-    build_pipeline_config,
-    step_display_name,
-    PipelineConfig,
-    ordered_steps,
-)
+import sys
 
 from helpers.platform_utils import is_macos, is_shorebird_available
 from helpers.shell import terminate_active_processes
@@ -28,17 +17,29 @@ from helpers.types import fmt_elapsed
 
 from gui.widgets import scrollable_frame, segmented_button
 from gui.settings import SettingsPanel, load_saved_theme
+from gui.sections import mount_config_panel, persist_gui_config
+from gui.pipeline_runner import PipelineRunner
 from gui.theme import COLORS, RADIUS, PAD
+from gui.console import ConsolePanel
+from gui.readme import ReadMePanel
+
+from core.prerequisites import flutter_project_prereq_status
+from core.constants import APP_TITLE, APP_VERSION
+from core.bootstrap import ensure_dependencies
+from core.pipeline_config import (
+    build_pipeline_config,
+    step_display_name,
+    PipelineConfig,
+    ordered_steps,
+)
 from core.config_store import (
     pipeline_section_enabled,
     ensure_config_file,
     reload_app_config,
     init_app_config,
 )
-from gui.sections import mount_config_panel, persist_gui_config
-from gui.console import ConsolePanel
-from gui.pipeline_runner import PipelineRunner
-from gui.readme import ReadMePanel
+from core.steps import StepDef
+
 import customtkinter as ctk
 
 
@@ -104,10 +105,11 @@ class BuildApp(ctk.CTk):
         self.step_status_labels: dict[str, ctk.CTkLabel] = {}
         self.step_switches: dict[str, ctk.CTkSwitch] = {}
         self.step_vars: dict[str, ctk.BooleanVar] = {}
+        self._steps_disabled_by_prereq: set[str] = set()
 
-        # Section toggle state is managed by ``self.sections``.
         self._step_start_times: dict[str, float] = {}
         self._pipeline_thread: Thread | None = None
+        self._last_timer_update: float = 0.0
         self._running_steps: set[str] = set()
         self._lockable_widgets: list = []
 
@@ -148,6 +150,7 @@ class BuildApp(ctk.CTk):
         self._pipeline_runner = PipelineRunner()
         self._apply_section_enabled_states()
         self._apply_ios_mode_rules()
+        self._sync_run_button()
         self._start_queue_polling()
 
     def _track(self, widget):
@@ -160,6 +163,58 @@ class BuildApp(ctk.CTk):
 
     def _register_section_bool_var(self, section_key: str, var: ctk.BooleanVar) -> None:
         self._section_bool_vars.setdefault(section_key, []).append(var)
+
+    def _sync_section_enabled_from_disk(self) -> None:
+        self.section_enabled_vars["git_pre"].set(pipeline_section_enabled("git_pre"))
+        self.section_enabled_vars["common"].set(pipeline_section_enabled("common"))
+        self.section_enabled_vars["git_post"].set(pipeline_section_enabled("git_post"))
+        self.section_enabled_vars["android"].set(pipeline_section_enabled("android"))
+        self.section_enabled_vars["ios"].set(
+            pipeline_section_enabled("ios", include_ios_default=self._show_ios),
+        )
+        self.section_enabled_vars["post"].set(pipeline_section_enabled("post"))
+
+    def _clear_config_panel_state(self) -> None:
+        self._gui_config_serializers.clear()
+        self._steps_disabled_by_prereq.clear()
+        for k in self._section_widgets:
+            self._section_widgets[k].clear()
+        for k in self._section_bool_vars:
+            self._section_bool_vars[k].clear()
+        self._sb_mode_widgets.clear()
+        self._sb_checkboxes.clear()
+        self._sb_hint_labels.clear()
+        self.step_progress_bars.clear()
+        self.step_status_labels.clear()
+        self.step_switches.clear()
+        self.step_vars.clear()
+        self._lockable_widgets.clear()
+        self.version_var = None
+        self.build_var = None
+        self.recipients_var = None
+        self._commit_msg_pre = None
+        self._commit_msg_release = None
+        self._pub_mode = None
+        self._shorebird_android = None
+        self._android_sb_mode = None
+        self._shorebird_ios = None
+        self._ios_sb_mode = None
+        self._power_mode = None
+        self._quit_after_power = None
+
+    def rebuild_config_panel(self) -> None:
+        """Reload merged config from disk and rebuild the Config tab (prereqs, env, secrets)."""
+        if self._destroyed or self.is_busy:
+            return
+        reload_app_config()
+        self._sync_section_enabled_from_disk()
+        self._clear_config_panel_state()
+        for w in self.config_scroll.winfo_children():
+            w.destroy()
+        mount_config_panel(self, self.config_scroll)
+        self._apply_section_enabled_states()
+        self._apply_ios_mode_rules()
+        self._sync_run_button()
 
     # ── UI construction ───────────────────────────────────────────────────────
 
@@ -261,10 +316,12 @@ class BuildApp(ctk.CTk):
     # ── Section / shorebird toggles ──────────────────────────────────────────
 
     def _on_shorebird_toggle(self, section_key: str, var: ctk.BooleanVar) -> None:
+        seg = self._sb_mode_widgets.get(section_key)
         if not self._shorebird_ok:
             var.set(False)
+            if seg:
+                seg.configure(state="disabled")
             return
-        seg = self._sb_mode_widgets.get(section_key)
         if seg:
             seg.configure(state="normal" if var.get() else "disabled")
         if section_key == "ios":
@@ -315,11 +372,24 @@ class BuildApp(ctk.CTk):
             appstore_sw.configure(state="disabled")
             return
 
+        if "appstore_upload" in self._steps_disabled_by_prereq:
+            appstore_var.set(False)
+            appstore_sw.configure(state="disabled")
+            return
+
         if self.is_busy:
             appstore_sw.configure(state="disabled")
             return
 
         appstore_sw.configure(state="normal" if ios_enabled else "disabled")
+
+    def _sync_run_button(self) -> None:
+        """Disable the Run button when the Flutter project root is not configured."""
+        ok, _ = flutter_project_prereq_status()
+        if ok:
+            self.run_btn.configure(state="normal", fg_color=COLORS["accent"])
+        else:
+            self.run_btn.configure(state="disabled", fg_color=COLORS["disabled"])
 
     @staticmethod
     def _resolve_build_mode(
@@ -369,8 +439,7 @@ class BuildApp(ctk.CTk):
             self._console.end_batch()
         if self._running_steps:
             now = time.monotonic()
-            last = getattr(self, "_last_timer_update", 0.0)
-            if now - last >= self._TIMER_DEBOUNCE_S:
+            if now - self._last_timer_update >= self._TIMER_DEBOUNCE_S:
                 self._last_timer_update = now
                 for key in self._running_steps:
                     start = self._step_start_times.get(key, now)
@@ -466,14 +535,29 @@ class BuildApp(ctk.CTk):
                 w.configure(state=state)
             except Exception:
                 pass
-        for cb in self._sb_checkboxes.values():
+        shorebird_vars: dict[str, ctk.BooleanVar | None] = {
+            "android": self._shorebird_android,
+            "ios": self._shorebird_ios,
+        }
+        for sk, cb in self._sb_checkboxes.items():
             try:
-                cb.configure(state=state)
+                if locked:
+                    cb.configure(state="disabled")
+                elif not self._shorebird_ok:
+                    cb.configure(state="disabled")
+                else:
+                    cb.configure(state="normal")
             except Exception:
                 pass
-        for seg in self._sb_mode_widgets.values():
+        for sk, seg in self._sb_mode_widgets.items():
             try:
-                seg.configure(state=state)
+                if locked:
+                    seg.configure(state="disabled")
+                elif not self._shorebird_ok:
+                    seg.configure(state="disabled")
+                else:
+                    sv = shorebird_vars.get(sk)
+                    seg.configure(state="normal" if (sv and sv.get()) else "disabled")
             except Exception:
                 pass
 
@@ -493,6 +577,13 @@ class BuildApp(ctk.CTk):
             for widget in widgets:
                 try:
                     widget.configure(state=state)
+                except Exception:
+                    pass
+        for step_key in self._steps_disabled_by_prereq:
+            sw = self.step_switches.get(step_key)
+            if sw:
+                try:
+                    sw.configure(state="disabled")
                 except Exception:
                     pass
 
@@ -538,6 +629,17 @@ class BuildApp(ctk.CTk):
             return
         self._stop_requested = False
         reload_app_config()
+        ok_flutter, flutter_msg = flutter_project_prereq_status()
+        if not ok_flutter:
+            self._tab_selector.set("Console")
+            self._switch_tab("Console")
+            self._console.clear()
+            self.log(f"\n✗ Pipeline cannot run.\n{flutter_msg}\n")
+            self.running_status_lbl.configure(
+                text="Flutter project not configured",
+                text_color=COLORS["error"],
+            )
+            return
         cfg = self._build_pipeline_config_from_ui()
 
         all_steps = ordered_steps(cfg, include_ios=self._show_ios)

@@ -6,16 +6,18 @@ from collections.abc import Callable
 import customtkinter as ctk
 
 from core.config_store import (
-    resolved_flutter_project_root_string,
     PIPELINE_SECTION_TO_CONFIG_SECTION,
-    get_app_config,
-    save_config,
     deep_merge,
+    get_app_config,
+    resolved_flutter_project_root_string,
+    save_config,
 )
-
-from . import android_section, app_info, common_section, distribution_section, ios_section, post_build_section, post_git, pre_git
+from core.prerequisites import flutter_project_prereq_status
 from core.constants import set_flutter_project_root
 from gui.sections.contracts import ConfigPanelHost
+
+from . import android_section, app_info, common_section, distribution_section, ios_section, post_build_section, post_git, pre_git
+from . import widgets as W
 
 
 _SECTION_MOUNTS: tuple[tuple[str, Callable[[ConfigPanelHost, ctk.CTkScrollableFrame, int], int]], ...] = (
@@ -31,6 +33,11 @@ _SECTION_MOUNTS: tuple[tuple[str, Callable[[ConfigPanelHost, ctk.CTkScrollableFr
 def mount_config_panel(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame) -> None:
     app._gui_config_serializers.clear()
     row = 0
+    ok_flutter, flutter_msg = flutter_project_prereq_status()
+    if not ok_flutter:
+        top = W.build_card(scroll, row)
+        W.build_prereq_banner(top, row=0, message=flutter_msg, fonts=app._fonts)
+        row += 1
     row = app_info.mount(app, scroll, row)
     for _, mount_fn in _SECTION_MOUNTS:
         row = mount_fn(app, scroll, row)
@@ -45,7 +52,14 @@ def collect_gui_config(app: ConfigPanelHost) -> dict:
         config_key = PIPELINE_SECTION_TO_CONFIG_SECTION.get(section_alias, section_alias)
         section_patch = parts.setdefault(config_key, {})
         section_patch["enabled"] = bool(section_var.get())
-    return deep_merge(get_app_config(), parts)
+    dist_list = parts.pop("distribution", None)
+    merged = deep_merge(get_app_config(), parts)
+    if dist_list is not None:
+        env_block = merged.get("env")
+        if not isinstance(env_block, dict):
+            env_block = {}
+        merged["env"] = {**env_block, "DISTRIBUTION": dist_list}
+    return merged
 
 
 def persist_gui_config(app: ConfigPanelHost) -> None:

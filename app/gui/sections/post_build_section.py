@@ -24,16 +24,22 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
 
     overrides = W.step_var_overrides(list(POST_STEPS), state)
 
-    ok, msg = P.flutter_project_prereq_status()
+    ok_flutter, _ = P.flutter_project_prereq_status()
     off = 0
     c = W.build_card(scroll, row)
-    if not ok:
-        W.build_prereq_banner(c, row=off, message=msg, fonts=app._fonts)
+    if ok_flutter and not P.drive_creds_configured():
+        W.build_prereq_banner(
+            c,
+            row=off,
+            message=(
+                "Upload to Drive requires GOOGLE_DRIVE_CREDENTIALS_JSON in "
+                "app/secrets/enviroment.json (Settings → Save environment)."
+            ),
+            fonts=app._fonts,
+            tone="warn",
+        )
         off += 1
-    dw = P.drive_upload_warning()
-    if dw:
-        W.build_prereq_banner(c, row=off, message=dw, fonts=app._fonts, tone="warn")
-        off += 1
+        app._steps_disabled_by_prereq.add("drive_upload")
     W.build_section_header(
         c, title="Post-Build", fonts=app._fonts,
         section_key="post", app=app, header_row=off,
@@ -43,7 +49,10 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
         first_grid_row=1 + off, step_var_overrides=overrides,
         trailing_widgets_by_key={"shutdown": _shutdown_controls(app)},
     )
-    if not ok:
+    if "drive_upload" in app._steps_disabled_by_prereq:
+        app.step_vars["drive_upload"].set(False)
+        app.step_switches["drive_upload"].configure(state="disabled")
+    if not ok_flutter:
         W.disable_section_widgets(app, "post")
 
     def _serialize() -> dict:

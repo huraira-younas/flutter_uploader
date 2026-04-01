@@ -1,8 +1,6 @@
-# ── Secrets & local env (never commit) ────────────────────────────────────────
-# `.env*` matches `app/.env`, `app/.env.local`, etc.; keep the example file committable.
-app/.env*
-!app/.env.example
-app/*.env
+# ── Secrets (never commit) ────────────────────────────────────────────────────
+# Local secrets directory (``enviroment.json``, optional Drive JSON/tokens, etc.)
+app/secrets/
 
 # Google Drive OAuth (client secret + cached user token)
 app/gdrive_token.json

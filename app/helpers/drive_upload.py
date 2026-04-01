@@ -3,15 +3,14 @@
 from pathlib import Path
 
 from core.constants import (
-    DEFAULT_GMAIL_RECIPIENTS,
     DRIVE_SCOPES,
+    MIME_MAP,
+    OUTPUTS_DIR,
     UPLOADER_DIR,
     FOLDER_MIME,
     LINK_PREFIX,
-    OUTPUTS_DIR,
-    MIME_MAP,
 )
-from core.config_store import env_value
+from core.config_store import distribution_recipients_from_config, env_value
 from helpers.types import LogFn, StopCheckFn
 
 
@@ -22,11 +21,11 @@ def _resolve_env_path(raw: str) -> Path:
     return (UPLOADER_DIR / p).resolve()
 
 
-def _parse_recipients(recipients: str | None) -> list[str]:
-    raw = (recipients or "").strip() or env_value("DISTRIBUTION_EMAILS")
-    if not raw:
-        return list(DEFAULT_GMAIL_RECIPIENTS)
-    return [e.strip() for e in raw.split(",") if e.strip() and "@" in e.strip()]
+def _drive_email_recipients(recipients: str | None) -> list[str]:
+    raw = (recipients or "").strip()
+    if raw:
+        return [e.strip() for e in raw.split(",") if e.strip() and "@" in e.strip()]
+    return distribution_recipients_from_config()
 
 
 def _email_drive_link(
@@ -170,7 +169,7 @@ def upload_outputs_to_drive(
         link = f"{LINK_PREFIX}{folder_id}"
         log(f"Public folder link:\n  {link}\n")
 
-        to_addrs = _parse_recipients(recipients)
+        to_addrs = _drive_email_recipients(recipients)
         if to_addrs:
             uploaded_names = [a.name for a in artifacts]
             _email_drive_link(

@@ -26,6 +26,7 @@ class ConsolePanel(ctk.CTkFrame):
         super().__init__(parent, fg_color="transparent")
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
+        self._auto_scroll = False
         self._in_batch = False
         self.visible = False
         self._fonts = fonts
@@ -78,7 +79,7 @@ class ConsolePanel(ctk.CTkFrame):
         self._tb.yview_scroll(delta, "units")
         return "break"
 
-    def _classify(self, text: str) -> str:
+    def classify(self, text: str) -> str:
         if text.startswith(">>"):
             return "cmd"
         lower = text.lower()
@@ -86,10 +87,6 @@ class ConsolePanel(ctk.CTkFrame):
             if any(k in lower for k in keywords):
                 return tag
         return "info"
-
-    def classify(self, text: str) -> str:
-        """Public classifier used by queue draining code."""
-        return self._classify(text)
 
     def _should_scroll(self) -> bool:
         """Auto-scroll only when the Console tab is visible and user hasn't scrolled up."""

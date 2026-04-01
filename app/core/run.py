@@ -2,6 +2,16 @@ from typing import Callable
 import shutil
 import os
 
+from helpers.platform_utils import open_folder, shutdown_pc, sleep_pc
+from helpers.drive_upload import upload_outputs_to_drive
+from helpers.types import LogFn, StopCheckFn
+from helpers.rename_artifacts import (
+    copy_apks_to_outputs,
+    copy_ipas_to_outputs,
+    clear_outputs,
+)
+from helpers.shell import CommandRunner
+from core.config_store import env_value
 from core.constants import (
     flutter_project_root,
     OUTPUTS_DIR,
@@ -10,15 +20,6 @@ from core.constants import (
     ipa_dir,
 )
 from core.steps import StepDef
-from helpers.platform_utils import open_folder, shutdown_pc, sleep_pc
-from helpers.drive_upload import upload_outputs_to_drive
-from helpers.types import LogFn, StopCheckFn
-from helpers.shell import CommandRunner
-from helpers.rename_artifacts import (
-    copy_apks_to_outputs, 
-    copy_ipas_to_outputs, 
-    clear_outputs,
-)
 
 
 _CMD: CommandRunner | None = None
@@ -26,8 +27,9 @@ _CMD: CommandRunner | None = None
 
 def _cmd() -> CommandRunner:
     global _CMD
-    if _CMD is None:
-        _CMD = CommandRunner(project_root=flutter_project_root())
+    root = flutter_project_root()
+    if _CMD is None or _CMD.project_root != root:
+        _CMD = CommandRunner(project_root=root)
     return _CMD
 
 
@@ -83,18 +85,21 @@ def run_flutter_pub_upgrade(log: LogFn = _log_noop, stop_check: StopCheckFn | No
     )
 
 
-def run_git_commit_pre(message: str, log: LogFn = _log_noop) -> bool:
+def _run_git_commit(message: str, log: LogFn = _log_noop) -> bool:
     log(f'\n>> git add . && git commit -m "{message}"\n')
     _git_add_and_commit(message, log)
     return True
 
 
+run_git_commit_pre = _run_git_commit
+run_git_commit_release = _run_git_commit
+
+
 def run_git_pull(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
-    _run_project_cmd(
+    return _run_project_cmd(
         ["git", "pull", "origin", "master"], log,
         header="\n>> git pull origin master\n", stop_check=stop_check,
     )
-    return True
 
 
 def format_release_commit_message(template: str, version: str, build: str) -> str:
@@ -108,18 +113,11 @@ def format_release_commit_message(template: str, version: str, build: str) -> st
         return t
 
 
-def run_git_commit_release(message: str, log: LogFn = _log_noop) -> bool:
-    log(f'\n>> git add . && git commit -m "{message}"\n')
-    _git_add_and_commit(message, log)
-    return True
-
-
 def run_git_push(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
-    _run_project_cmd(
+    return _run_project_cmd(
         ["git", "push", "origin", "master"], log,
         header="\n>> git push origin master\n", stop_check=stop_check,
     )
-    return True
 
 
 def run_build_apk(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
@@ -161,8 +159,8 @@ def run_appstore_upload(
     log: LogFn = _log_noop,
 ) -> bool:
     """Upload the first IPA found to App Store Connect via xcrun altool."""
-    issuer_id = os.environ.get("APP_STORE_ISSUER_ID", "").strip()
-    api_key = os.environ.get("APP_STORE_API_KEY", "").strip()
+    issuer_id = env_value("APP_STORE_ISSUER_ID")
+    api_key = env_value("APP_STORE_API_KEY")
     if (
         not issuer_id
         or not api_key

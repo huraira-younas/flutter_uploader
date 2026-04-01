@@ -20,11 +20,9 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
 
     overrides = W.step_var_overrides(list(ANDROID_STEPS), state)
 
-    ok, msg = P.flutter_project_prereq_status()
-    off = 1 if not ok else 0
+    ok, _ = P.flutter_project_prereq_status()
+    off = 0
     c = W.build_card(scroll, row)
-    if not ok:
-        W.build_prereq_banner(c, row=0, message=msg, fonts=app._fonts)
     W.build_section_header(
         c, title="Android Build", fonts=app._fonts,
         section_key="android", app=app,

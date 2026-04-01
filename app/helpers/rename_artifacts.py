@@ -85,5 +85,3 @@ def copy_ipas_to_outputs(version: str, build: str, log: LogFn) -> bool:
     if not v or not b:
         return True
     return _copy_ipas(v, b, log, OUTPUTS_DIR)
-
-

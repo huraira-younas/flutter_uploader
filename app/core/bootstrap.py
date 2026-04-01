@@ -2,14 +2,10 @@
 
 from __future__ import annotations
 
-from core.constants import UPLOADER_DIR, load_dotenv_files
 from collections.abc import Callable
+from core.constants import UPLOADER_DIR
 import subprocess
 import sys
-
-def load_environment() -> None:
-    """Load .env once per process if python-dotenv is installed."""
-    load_dotenv_files()
 
 
 def _run_pip(args: list[str], log: Callable[[str], None]) -> int:

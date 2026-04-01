@@ -2,19 +2,21 @@
 
 from __future__ import annotations
 
+from tkinter import filedialog
 import sys
 import os
-from tkinter import filedialog
 
 import customtkinter as ctk
 
-from core.constants import set_flutter_project_root
 from core.config_store import (
-    _parse_recipients,
+    distribution_recipients_from_config,
+    logs_recipients_from_config,
+    parse_recipients,
     get_app_config,
     get_section,
     save_config,
 )
+from core.constants import set_flutter_project_root
 from gui.widgets import card, scrollable_frame, section_label
 from gui.theme import (
     available_themes, get_theme, set_theme,
@@ -82,15 +84,15 @@ class SettingsPanel(ctk.CTkFrame):
         self._env_hint.grid(row=0, column=1, sticky="e", padx=(PAD["sm"], 0))
 
         env = get_section("env")
-        app_info = get_section("app_info")
-        flutter_root = str(env.get("flutter_project_root") or app_info.get("flutter_project_root") or "").strip()
+        flutter_root = str(env.get("FLUTTER_PROJECT_ROOT") or "").strip()
 
         self._env_vars: dict[str, ctk.StringVar] = {
-            "flutter_project_root": ctk.StringVar(value=flutter_root),
+            "FLUTTER_PROJECT_ROOT": ctk.StringVar(value=flutter_root),
             "GOOGLE_DRIVE_CREDENTIALS_JSON": ctk.StringVar(value=str(env.get("GOOGLE_DRIVE_CREDENTIALS_JSON") or "")),
             "GOOGLE_DRIVE_TOKEN_JSON": ctk.StringVar(value=str(env.get("GOOGLE_DRIVE_TOKEN_JSON") or "")),
             "GOOGLE_DRIVE_FOLDER_ID": ctk.StringVar(value=str(env.get("GOOGLE_DRIVE_FOLDER_ID") or "")),
-            "DISTRIBUTION_EMAILS": ctk.StringVar(value=str(env.get("DISTRIBUTION_EMAILS") or "")),
+            "APP_STORE_ISSUER_ID": ctk.StringVar(value=str(env.get("APP_STORE_ISSUER_ID") or "")),
+            "APP_STORE_API_KEY": ctk.StringVar(value=str(env.get("APP_STORE_API_KEY") or "")),
             "GMAIL_USER": ctk.StringVar(value=str(env.get("GMAIL_USER") or "")),
             "GMAIL_APP_PASSWORD": ctk.StringVar(value=str(env.get("GMAIL_APP_PASSWORD") or "")),
         }
@@ -100,8 +102,8 @@ class SettingsPanel(ctk.CTkFrame):
                 return ""
             return ", ".join(str(x).strip() for x in block if str(x).strip())
 
-        self._logs_distribution_var = ctk.StringVar(value=_list_to_csv(get_section("logs_distribution")))
-        self._distribution_var = ctk.StringVar(value=_list_to_csv(get_section("distribution")))
+        self._logs_distribution_var = ctk.StringVar(value=_list_to_csv(logs_recipients_from_config()))
+        self._distribution_var = ctk.StringVar(value=_list_to_csv(distribution_recipients_from_config()))
 
         def _browse_file(key: str, *, title: str) -> None:
             picked = filedialog.askopenfilename(title=title)
@@ -115,7 +117,7 @@ class SettingsPanel(ctk.CTkFrame):
 
         def _apply_env_to_process(values: dict[str, str]) -> None:
             for k, v in values.items():
-                if k == "flutter_project_root":
+                if k == "FLUTTER_PROJECT_ROOT":
                     continue
                 raw = str(v).strip()
                 if raw:
@@ -125,19 +127,17 @@ class SettingsPanel(ctk.CTkFrame):
 
         def _csv_to_email_list(raw: str) -> list[str]:
             parts = [p.strip() for p in raw.replace("\n", ",").split(",") if p.strip()]
-            return _parse_recipients(parts)
+            return parse_recipients(parts)
 
         def _save_env() -> None:
             patch = {k: self._env_vars[k].get().strip() for k in self._env_vars}
-            merged = {
-                **get_app_config(),
-                "env": patch,
-                "logs_distribution": _csv_to_email_list(self._logs_distribution_var.get()),
-                "distribution": _csv_to_email_list(self._distribution_var.get()),
-            }
+            patch["LOGS_DISTRIBUTION"] = _csv_to_email_list(self._logs_distribution_var.get())
+            patch["DISTRIBUTION"] = _csv_to_email_list(self._distribution_var.get())
+            merged = {**get_app_config(), "env": {**get_section("env"), **patch}}
             save_config(merged)
             _apply_env_to_process(patch)
-            set_flutter_project_root(patch.get("flutter_project_root", ""))
+            set_flutter_project_root(patch.get("FLUTTER_PROJECT_ROOT", ""))
+            self._app.rebuild_config_panel()
             self._env_hint.configure(text="Saved")
             self._app.after(1500, lambda: self._env_hint.configure(text=""))
 
@@ -180,7 +180,7 @@ class SettingsPanel(ctk.CTkFrame):
             elif browse == "dir":
                 ctk.CTkButton(
                     env_outer, text="Browse", width=88, corner_radius=RADIUS["btn"],
-                    command=lambda: _browse_dir("flutter_project_root"),
+                    command=lambda: _browse_dir("FLUTTER_PROJECT_ROOT"),
                 ).grid(row=er, column=2, padx=(0, PAD["lg"]), pady=self._ENV_ROW_PAD, sticky="ne")
             else:
                 ctk.CTkFrame(env_outer, fg_color="transparent", width=88, height=1).grid(
@@ -207,7 +207,7 @@ class SettingsPanel(ctk.CTkFrame):
                 height=28,
                 show="•" if is_secret else None,
             )
-            # Same grid as ``_row`` without Browse: entry only in column 1, spacer column 2 — matches Env fallback width.
+            # Same grid as ``_row`` without Browse: entry only in column 1, spacer column 2.
             entry.grid(row=er, column=1, padx=(0, PAD["sm"]), pady=self._ENV_ROW_PAD, sticky="new")
             ctk.CTkFrame(env_outer, fg_color="transparent", width=88, height=1).grid(
                 row=er, column=2, padx=(0, PAD["lg"]), pady=self._ENV_ROW_PAD, sticky="nw",
@@ -215,18 +215,20 @@ class SettingsPanel(ctk.CTkFrame):
             er += 1
 
         _subsection("Project")
-        _row("Flutter project root", "flutter_project_root", browse="dir")
+        _row("Flutter project root", "FLUTTER_PROJECT_ROOT", browse="dir")
         _subsection("Google Drive")
         _row("OAuth client JSON", "GOOGLE_DRIVE_CREDENTIALS_JSON", browse="file")
         _row("Token JSON (optional)", "GOOGLE_DRIVE_TOKEN_JSON", browse="file")
         _row("Parent folder ID (optional)", "GOOGLE_DRIVE_FOLDER_ID")
+        _subsection("iOS / App Store")
+        _row("Issuer ID", "APP_STORE_ISSUER_ID")
+        _row("API Key ID", "APP_STORE_API_KEY")
         _subsection("Email")
         _row("Gmail address", "GMAIL_USER")
         _row("Gmail app password", "GMAIL_APP_PASSWORD", is_secret=True)
         _subsection("Logs | Distribution")
         _row_var("Logs (build reports, comma-separated)", self._logs_distribution_var)
         _row_var("Distribution (Drive links, comma-separated)", self._distribution_var)
-        _row("Env fallback emails (optional, comma-separated)", "DISTRIBUTION_EMAILS")
 
         ctk.CTkButton(
             env_outer,

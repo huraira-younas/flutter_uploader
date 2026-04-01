@@ -4,16 +4,25 @@ import os
 import tempfile
 from pathlib import Path
 
-from core.constants import VERSION_RE, pubspec_path
+from core.constants import ProjectRootNotConfiguredError, VERSION_RE, pubspec_path
+
+_FALLBACK_VERSION = ("0.0.0", "1")
 
 
 def read_version() -> tuple[str, str]:
-    """Return (version, build) from pubspec.yaml, e.g. ('1.0.6', '65')."""
-    pubspec = pubspec_path()
-    text = pubspec.read_text(encoding="utf-8")
+    """Return (version, build) from pubspec.yaml, e.g. ('1.0.6', '65').
+
+    Returns ``("0.0.0", "1")`` when the project root is not configured or
+    ``pubspec.yaml`` is unreadable, so the GUI can still start.
+    """
+    try:
+        pubspec = pubspec_path()
+        text = pubspec.read_text(encoding="utf-8")
+    except (ProjectRootNotConfiguredError, OSError):
+        return _FALLBACK_VERSION
     m = VERSION_RE.search(text)
     if not m:
-        return ("0.0.0", "1")
+        return _FALLBACK_VERSION
     raw = m.group(2)
     if "+" in raw:
         ver, build = raw.split("+", 1)

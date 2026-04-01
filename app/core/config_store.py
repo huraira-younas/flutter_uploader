@@ -1,4 +1,7 @@
-"""Global app configuration: ``config.json`` + in-process cache (GUI + CLI).
+"""Global app configuration: ``config.json`` + ``secrets/enviroment.json`` + in-process cache.
+
+Pipeline/UI state lives in ``config.json``.  Secrets and paths live in
+``secrets/enviroment.json`` (git-ignored) and are merged into the in-memory ``env`` section.
 
 All consumers use ``get_app_config()`` / ``get_section()`` — do not thread config dicts
 through UI or pipeline call chains.
@@ -6,43 +9,45 @@ through UI or pipeline call chains.
 
 from __future__ import annotations
 
-import copy
-import json
-import os
-import sys
 from pathlib import Path
 from typing import Any
+import copy
+import json
+import sys
+import os
+
 
 from core.constants import (
     DEFAULT_COMMIT_MESSAGE_RELEASE,
     DEFAULT_COMMIT_MESSAGE_PRE,
     UPLOADER_DIR,
+    SECRETS_DIR,
 )
 # Canonical mapping between pipeline section aliases and persisted config keys.
 PIPELINE_SECTION_TO_CONFIG_SECTION: dict[str, str] = {
-    "git_pre": "pre_git",
     "git_post": "post_git",
+    "android": "android",
+    "git_pre": "pre_git",
     "post": "post_build",
     "common": "common",
-    "android": "android",
     "ios": "ios",
 }
 
 
 CONFIG_PATH: Path = UPLOADER_DIR / "config.json"
+# Local secrets + paths (not committed); merged into the in-memory ``env`` section.
+ENVIRONMENT_JSON_PATH: Path = SECRETS_DIR / "enviroment.json"
 
 # Top-level keys in ``config.json`` / ``default_app_config()``.
 CONFIG_SECTION_KEYS: tuple[str, ...] = (
+    "post_build",
     "app_info",
-    "env",
-    "pre_git",
-    "common",
     "post_git",
     "android",
+    "pre_git",
+    "common",
+    "env",
     "ios",
-    "post_build",
-    "distribution",
-    "logs_distribution",
 )
 
 _cache: dict[str, Any] | None = None
@@ -63,17 +68,20 @@ def default_app_config() -> dict[str, Any]:
     """Code defaults; user file overlays this."""
     return {
         "app_info": {
+            "theme": "catppuccin_mocha",
             "version": "",
             "build": "",
-            "theme": "catppuccin_mocha",
         },
         "env": {
-            "flutter_project_root": "",
             "GOOGLE_DRIVE_CREDENTIALS_JSON": "",
-            "GOOGLE_DRIVE_FOLDER_ID": "",
             "GOOGLE_DRIVE_TOKEN_JSON": "",
-            "DISTRIBUTION_EMAILS": "",
+            "GOOGLE_DRIVE_FOLDER_ID": "",
+            "FLUTTER_PROJECT_ROOT": "",
+            "APP_STORE_ISSUER_ID": "",
             "GMAIL_APP_PASSWORD": "",
+            "APP_STORE_API_KEY": "",
+            "LOGS_DISTRIBUTION": [],
+            "DISTRIBUTION": [],
             "GMAIL_USER": "",
         },
         "pre_git": {
@@ -109,12 +117,10 @@ def default_app_config() -> dict[str, Any]:
             "quit_after_power": False,
             "steps": {"open_folders": False, "drive_upload": True, "shutdown": False},
         },
-        "distribution": [],
-        "logs_distribution": [],
     }
 
 
-def _parse_recipients(items: list[str]) -> list[str]:
+def parse_recipients(items: list[str]) -> list[str]:
     out: list[str] = []
     seen: set[str] = set()
     for raw in items:
@@ -129,24 +135,39 @@ def _parse_recipients(items: list[str]) -> list[str]:
     return out
 
 
+def _load_environment_json_file() -> dict[str, Any]:
+    """Parse ``secrets/enviroment.json``; missing or invalid file → ``{}``."""
+    if not ENVIRONMENT_JSON_PATH.is_file():
+        return {}
+    try:
+        raw = ENVIRONMENT_JSON_PATH.read_text(encoding="utf-8")
+        data = json.loads(raw) if raw.strip() else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
 def _read_merged_from_disk() -> dict[str, Any]:
     base = default_app_config()
-    if not CONFIG_PATH.is_file():
-        return base
-    try:
-        raw = CONFIG_PATH.read_text(encoding="utf-8")
-        saved = json.loads(raw) if raw.strip() else {}
-    except (OSError, json.JSONDecodeError):
-        return base
+    saved: dict[str, Any] = {}
+    if CONFIG_PATH.is_file():
+        try:
+            raw = CONFIG_PATH.read_text(encoding="utf-8")
+            saved = json.loads(raw) if raw.strip() else {}
+        except (OSError, json.JSONDecodeError):
+            saved = {}
     if not isinstance(saved, dict):
-        return base
-    return deep_merge(base, saved)
+        saved = {}
+    merged = deep_merge(base, saved)
+    file_env = _load_environment_json_file()
+    merged["env"] = deep_merge(merged.get("env") or {}, file_env)
+    return merged
 
 
 def init_app_config(*, force_reload: bool = False) -> dict[str, Any]:
     """Ensure ``config.json`` exists and populate the process-wide config cache.
 
-    Call once after env (``.env``) is loaded; safe to call multiple times.
+    Safe to call multiple times; only reads from disk on the first call (or when forced).
     """
     global _cache
     ensure_config_file()
@@ -156,7 +177,7 @@ def init_app_config(*, force_reload: bool = False) -> dict[str, Any]:
 
 
 def reload_app_config() -> dict[str, Any]:
-    """Re-read ``config.json`` from disk into the cache."""
+    """Re-read ``config.json`` and ``secrets/enviroment.json`` from disk into the cache."""
     global _cache
     _cache = _read_merged_from_disk()
     return _cache
@@ -181,23 +202,38 @@ def get_section(name: str) -> Any:
     return copy.deepcopy(base_chunk)
 
 
+def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    tmp.replace(path)
+
+
 def save_config(data: dict[str, Any]) -> None:
-    """Persist a full or partial snapshot; merge with defaults; update cache."""
+    """Persist merged config: pipeline/UI state → ``config.json``; ``env`` → ``secrets/enviroment.json``."""
     global _cache
     merged = deep_merge(default_app_config(), data)
-    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    tmp = CONFIG_PATH.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(merged, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    tmp.replace(CONFIG_PATH)
     _cache = merged
+    env_block = merged.get("env")
+    if isinstance(env_block, dict):
+        try:
+            _atomic_write_json(ENVIRONMENT_JSON_PATH, env_block)
+        except OSError:
+            pass
+    try:
+        config_only = {k: v for k, v in merged.items() if k != "env"}
+        _atomic_write_json(CONFIG_PATH, config_only)
+    except OSError:
+        pass
 
 
 def ensure_config_file() -> None:
-    """Create ``config.json`` (defaults snapshot) if missing."""
+    """Create ``config.json`` (defaults snapshot) if missing. Does not write ``secrets/enviroment.json``."""
     if CONFIG_PATH.is_file():
         return
     try:
-        save_config(default_app_config())
+        config_only = {k: v for k, v in default_app_config().items() if k != "env"}
+        _atomic_write_json(CONFIG_PATH, config_only)
     except OSError:
         pass
 
@@ -253,33 +289,23 @@ def ios_build_mode_from_config() -> str:
     return _shorebird_build_mode(get_app_config().get("ios") or {})
 
 
-def distribution_recipients_from_config() -> list[str]:
-    block = get_app_config().get("distribution")
+def _env_email_list(key: str) -> list[str]:
+    env = get_app_config().get("env")
+    if not isinstance(env, dict) or key not in env:
+        return []
+    block = env.get(key)
     if isinstance(block, list):
-        return _parse_recipients([str(v) for v in block])
-    if isinstance(block, dict):
-        raw = str(block.get("recipients") or "")
-        return _parse_recipients(raw.split(","))
+        return parse_recipients([str(v) for v in block])
     return []
+
+
+def distribution_recipients_from_config() -> list[str]:
+    return _env_email_list("DISTRIBUTION")
 
 
 def logs_recipients_from_config() -> list[str]:
-    """Emails that receive the HTML build report + log attachment (explicit list in config)."""
-    block = get_section("logs_distribution")
-    if isinstance(block, list) and block:
-        return _parse_recipients([str(v) for v in block])
-    return []
-
-
-def build_report_recipients_from_config() -> list[str]:
-    """Build report recipients: ``logs_distribution`` if set, else ``DISTRIBUTION_EMAILS`` (env / env block)."""
-    direct = logs_recipients_from_config()
-    if direct:
-        return direct
-    raw = env_value("DISTRIBUTION_EMAILS")
-    if not raw:
-        return []
-    return _parse_recipients(raw.split(","))
+    """Emails that receive the HTML build report (``env.LOGS_DISTRIBUTION``)."""
+    return _env_email_list("LOGS_DISTRIBUTION")
 
 
 def distribution_recipients_csv_from_config() -> str | None:
@@ -288,7 +314,7 @@ def distribution_recipients_csv_from_config() -> str | None:
 
 
 def env_value(key: str, *, default: str = "") -> str:
-    """Read an environment value from `os.environ` with `config.json` fallback."""
+    """Read an environment value from ``os.environ``, then merged ``env`` (``secrets/enviroment.json``)."""
     raw = os.environ.get(key, "").strip()
     if raw:
         return raw
@@ -302,15 +328,11 @@ def env_value(key: str, *, default: str = "") -> str:
 
 
 def resolved_flutter_project_root_string() -> str:
-    """Flutter project directory: ``FLUTTER_PROJECT_ROOT``, then ``env.flutter_project_root``, then legacy ``app_info``."""
+    """Flutter project directory: ``FLUTTER_PROJECT_ROOT`` from process env or ``secrets/enviroment.json`` (merged ``env``)."""
     raw = os.environ.get("FLUTTER_PROJECT_ROOT", "").strip()
     if raw:
         return raw
-    cfg = get_app_config()
-    block = cfg.get("env")
+    block = get_app_config().get("env")
     if isinstance(block, dict):
-        v = str(block.get("flutter_project_root", "")).strip()
-        if v:
-            return v
-    legacy = str((cfg.get("app_info") or {}).get("flutter_project_root", "")).strip()
-    return legacy
+        return str(block.get("FLUTTER_PROJECT_ROOT", "")).strip()
+    return ""

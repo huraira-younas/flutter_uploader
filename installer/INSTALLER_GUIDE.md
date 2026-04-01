@@ -32,7 +32,7 @@ Output goes to `dist-installer/FlutterUploader-Setup.exe`.
   `.\installer\windows\uninstall.ps1`  
   Add `-Silent` for a quiet uninstall.
 
-The installer also removes `config.json`, `.env`, `logs\`, and `outputs\` under the install folder when uninstalling.
+The installer also removes `config.json`, `.env`, `secrets\`, `logs\`, and `outputs\` under the install folder when uninstalling.
 
 ### Windows code signing (optional but recommended)
 

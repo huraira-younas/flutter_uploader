@@ -22,58 +22,49 @@ else:
     # Dev: keep config/logs/outputs under ./app/
     UPLOADER_DIR = Path(__file__).resolve().parents[1]
 
+SECRETS_DIR = UPLOADER_DIR / "secrets"
 
 # Repo root (parent of ``app/``) — ``README.md`` lives here; app-level docs stay under ``UPLOADER_DIR``.
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 
-_dotenv_loaded = False
 _flutter_project_root: Path | None = None
 
 
-def load_dotenv_files() -> None:
-    global _dotenv_loaded
-    if _dotenv_loaded:
-        return
-    try:
-        from dotenv import load_dotenv
-    except ImportError:
-        return
-    load_dotenv(UPLOADER_DIR / ".env")
-    _dotenv_loaded = True
+class ProjectRootNotConfiguredError(FileNotFoundError):
+    """Raised when FLUTTER_PROJECT_ROOT is missing or invalid."""
 
 
 def require_flutter_project_root() -> Path:
-    """Resolve FLUTTER_PROJECT_ROOT from env or persisted config (cached after first success)."""
+    """Resolve FLUTTER_PROJECT_ROOT from env or persisted config (cached after first success).
+
+    Raises ``ProjectRootNotConfiguredError`` when the root is not set or the
+    directory does not exist, allowing callers (GUI, CLI) to handle it gracefully.
+    """
     global _flutter_project_root
     if _flutter_project_root is not None:
         return _flutter_project_root
 
     raw = os.environ.get("FLUTTER_PROJECT_ROOT", "").strip()
     if not raw:
-        try:
-            cfg_path = UPLOADER_DIR / "config.json"
-            if cfg_path.is_file():
-                saved = json.loads(cfg_path.read_text(encoding="utf-8") or "{}")
-                raw = str(((saved.get("env") or {}).get("flutter_project_root") or "")).strip()
-                if not raw:
-                    raw = str(((saved.get("app_info") or {}).get("flutter_project_root") or "")).strip()
-        except (OSError, json.JSONDecodeError, AttributeError):
-            raw = ""
+        env_path = SECRETS_DIR / "enviroment.json"
+        if env_path.is_file():
+            try:
+                saved = json.loads(env_path.read_text(encoding="utf-8") or "{}")
+                if isinstance(saved, dict):
+                    raw = str(saved.get("FLUTTER_PROJECT_ROOT", "")).strip()
+            except (OSError, json.JSONDecodeError):
+                raw = ""
 
     if not raw:
-        print(
-            "Error: FLUTTER_PROJECT_ROOT is required. Set Flutter project root in Settings → Environment "
-            "or in .env next to the executable.\n",
-            file=sys.stderr,
+        raise ProjectRootNotConfiguredError(
+            "FLUTTER_PROJECT_ROOT is required. Set Flutter project root in "
+            "Settings → Environment or in app/secrets/enviroment.json."
         )
-        raise SystemExit(1)
     p = Path(raw).expanduser().resolve()
     if not p.is_dir():
-        print(
-            f"Error: FLUTTER_PROJECT_ROOT '{raw}' resolves to {p}, which is not a directory.\n",
-            file=sys.stderr,
+        raise ProjectRootNotConfiguredError(
+            f"FLUTTER_PROJECT_ROOT '{raw}' resolves to {p}, which is not a directory."
         )
-        raise SystemExit(1)
     _flutter_project_root = p
     return p
 
@@ -106,25 +97,26 @@ README_PATH = (UPLOADER_DIR / "README.md") if getattr(sys, "frozen", False) else
 
 def pubspec_path() -> Path:
     return require_flutter_project_root() / "pubspec.yaml"
+
+
 OUTPUTS_DIR = UPLOADER_DIR / "outputs"
 LOGS_DIR = UPLOADER_DIR / "logs"
 
 
-REPORT_ACCENT = "#38bdf8"
-REPORT_MUTED = "#64748b"
 REPORT_CARD_BORDER = "#1e293b"
 REPORT_CARD_BG = "#0f172a"
-REPORT_BG = "#020617"
-REPORT_SUCCESS = "#34d399"
-REPORT_ERROR = "#f87171"
 REPORT_SECTION = "#94a3b8"
+REPORT_SUCCESS = "#34d399"
+REPORT_ACCENT = "#38bdf8"
+REPORT_MUTED = "#64748b"
+REPORT_ERROR = "#f87171"
+REPORT_BG = "#020617"
 
 
 POWER_DELAY = 30
 
 
 DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive"]
-DEFAULT_GMAIL_RECIPIENTS: list[str] = []
 LINK_PREFIX = "https://drive.google.com/drive/folders/"
 FOLDER_MIME = "application/vnd.google-apps.folder"
 MIME_MAP: dict[str, str] = {

@@ -10,8 +10,8 @@ from core.constants import (
     MAX_REPORT_LOG_LINES,
     APP_TITLE,
 )
+from core.bootstrap import ensure_dependencies
 from core.steps import StepResult
-from core.bootstrap import ensure_dependencies, load_environment
 
 
 def _build_cli_parser() -> argparse.ArgumentParser:
@@ -146,6 +146,13 @@ def _run_cli(args: argparse.Namespace) -> None:
 
     init_app_config()
 
+    from core.prerequisites import flutter_project_prereq_status
+
+    ok_flutter, flutter_msg = flutter_project_prereq_status()
+    if not ok_flutter:
+        print(f"\nError: Pipeline cannot run.\n{flutter_msg}\n", file=sys.stderr)
+        sys.exit(1)
+
     if args.steps:
         keys = parse_step_keys_csv(args.steps)
         bad = find_invalid_step_keys(keys)
@@ -253,13 +260,11 @@ def main() -> None:
         return
 
     if args.cli:
-        load_environment()
         if not args.no_install:
             ensure_dependencies()
         _run_cli(args)
         return
 
-    load_environment()
     try:
         if not args.no_install:
             ensure_dependencies()

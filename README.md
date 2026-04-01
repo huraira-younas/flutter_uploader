@@ -5,21 +5,24 @@
 | Resource | Where |
 |:---|:---|
 | **Read Me (app)** | Tabs: **README** · **CLI** · **Environment** |
-| **CLI file** | [`app/CLI_REFERENCE.md`](app/CLI_REFERENCE.md) |
-| **Secrets & setup** | [`app/ENVIRONMENT.md`](app/ENVIRONMENT.md) · `app/.env` |
-| **Theme settings** | **Settings** tab in the GUI |
+| **CLI** | [`app/CLI_REFERENCE.md`](app/CLI_REFERENCE.md) |
+| **Secrets & setup** | [`app/ENVIRONMENT.md`](app/ENVIRONMENT.md) · optional `app/.env` |
+| **GUI settings** | **Settings** tab: **Environment** (paths, Drive, Gmail, recipients) + **Theme** |
 
 ---
 
 ## Quick start
 
-Standalone Python app: **`FLUTTER_PROJECT_ROOT`** in **`app/.env`** points at the Flutter project you want to build (the pipeline `cd`s there for build/git steps).
+1. **Flutter project** — In **Settings → Environment**, set **Flutter project root** (folder that contains `pubspec.yaml`) and click **Save environment**.  
+   Optional: set **`FLUTTER_PROJECT_ROOT`** in `app/.env` to override for that run.
+
+2. Run the app from the repo:
 
 ```bash
 cd /path/to/this/repo
 python3 run.py          # GUI — Windows: python run.py
 # OR
-./run # to run GUI on macOS/Linux
+./run                   # macOS/Linux helper → GUI
 ```
 
 `--cli` runs headless. See [`app/CLI_REFERENCE.md`](app/CLI_REFERENCE.md). Dependencies install unless `--no-install`.
@@ -46,19 +49,32 @@ python3 run.py          # GUI — Windows: python run.py
 | **Git (post)** | Release commit · Push `master` |
 | **Post-build** | Open `outputs/` · Drive upload + email · Shutdown / sleep |
 
-Artifacts are copied into **`outputs/`** here; the Flutter project’s `build/` trees are left as-is.
+Artifacts are copied into **`app/outputs/`** (next to the app); the Flutter project’s `build/` trees are left as-is.
 
 ---
 
 ## Section toggles
 
-Each of **Git**, **Android**, **iOS**, and **Post-build** has an **Enabled** switch. Turning a section off skips all of its steps—handy for Android-only or iOS-only runs.
+Each pipeline section has an **Enabled** switch. Turning a section off skips its steps. If the Flutter project root is missing or invalid, affected sections show a message and stay disabled until you fix **Settings → Environment**.
 
 ---
 
-## Themes
+## Settings
 
-The **Settings** tab lets you switch between built-in dark themes:
+### Environment
+
+Configure without editing `.env` (values are saved to **`app/config.json`** and applied for the current run):
+
+| Area | What |
+|:---|:---|
+| **Project** | Flutter project root |
+| **Google Drive** | OAuth client JSON, optional token + parent folder ID |
+| **Email** | Gmail address & app password |
+| **Logs \| Distribution** | **Logs** — build-report recipients (`LOGS_DISTRIBUTION`). **Distribution** — Drive link emails (`DISTRIBUTION`). Both live in `app/secrets/enviroment.json`. |
+
+### Theme
+
+**Settings → Theme** — pick a preset and **Apply** (app restarts). Saved under `app_info.theme` in `config.json`.
 
 | Theme | Style |
 |:---|:---|
@@ -69,8 +85,6 @@ The **Settings** tab lets you switch between built-in dark themes:
 | **Nord** | Arctic frost |
 | **One Dark** | Atom-style |
 | **Solarized Dark** | Precision palette |
-
-Click **Apply** on any theme card—the app restarts instantly with the new look. Your choice is saved to `app/config.json` under `app_info.theme`.
 
 ---
 
@@ -89,9 +103,9 @@ If Shorebird is missing, the control shows *(not installed)* and stays disabled.
 
 ## Google Drive
 
-- Uploads **`outputs/`** to one Drive folder (link sharing as configured).
-- Link appears in the **Console** tab; optional email uses Gmail settings in `.env`.
-- Needs OAuth **Desktop** client JSON (Drive API enabled). See [`ENVIRONMENT.md`](ENVIRONMENT.md).
+- Uploads **`outputs/`** to a Drive folder (link sharing as configured).
+- Link appears in the **Console** tab; optional emails use Gmail + recipient lists from **Settings** or `.env`.
+- Needs OAuth **Desktop** client JSON (Drive API enabled). See [`ENVIRONMENT.md`](app/ENVIRONMENT.md).
 
 ---
 
@@ -102,9 +116,9 @@ If Shorebird is missing, the control shows *(not installed)* and stays disabled.
 
 ---
 
-## Environment
+## Environment file
 
-Copy **`.env.example`** → **`.env`**. Details: [`ENVIRONMENT.md`](ENVIRONMENT.md). Never commit `.env`.
+Copy **`app/.env.example`** → **`app/.env`** if you want file-based overrides. Full variable list: [`app/ENVIRONMENT.md`](app/ENVIRONMENT.md). Never commit `.env`.
 
 ---
 
@@ -124,13 +138,20 @@ Copy **`.env.example`** → **`.env`**. Details: [`ENVIRONMENT.md`](ENVIRONMENT.
 
 Every run (success, fail, or stop):
 
-- **Log file** → `logs/` under this repo (timestamped, e.g. `build_v1.0.6+65_2026-03-26_15-30-00.log`).
-- **HTML email** → first address in `DISTRIBUTION_EMAILS` (needs `GMAIL_USER` + `GMAIL_APP_PASSWORD`): status banner, summary, step table, full log inline + `.log` attachment.
+- **Log file** → `app/logs/` (timestamped text file).
+- **HTML email** (if Gmail is configured): sent only to **`LOGS_DISTRIBUTION`** in `app/secrets/enviroment.json` (Settings → **Logs**).  
+  Email includes status, summary, step table, and attaches the log file.
 
 If Gmail is not set, logs are still written locally.
 
 ---
 
+## Installers (shipping without Python)
+
+See [`installer/INSTALLER_GUIDE.md`](installer/INSTALLER_GUIDE.md): Windows (Inno Setup) and macOS (DMG). Uninstall notes are in that guide.
+
+---
+
 ## CLI
 
-[`CLI_REFERENCE.md`](CLI_REFERENCE.md) · **Read Me → CLI**. Use **`--cli`** for headless.
+[`CLI_REFERENCE.md`](app/CLI_REFERENCE.md) · **Read Me → CLI** in the app. Use **`--cli`** for headless.

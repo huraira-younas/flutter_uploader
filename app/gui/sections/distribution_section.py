@@ -4,45 +4,28 @@ from __future__ import annotations
 
 import customtkinter as ctk
 
-from core.constants import DEFAULT_GMAIL_RECIPIENTS
+from core.config_store import distribution_recipients_from_config, parse_recipients
 from gui.sections.contracts import ConfigPanelHost
+from gui.sections import prerequisites as P
 from gui.widgets import card, section_label
-from core.config_store import env_value, get_section
+from gui.sections import widgets as W
 from gui.theme import COLORS, PAD, RADIUS
 
 
-def _parse_emails(raw: str) -> list[str]:
-    out: list[str] = []
-    seen: set[str] = set()
-    for chunk in raw.split(","):
-        email = chunk.strip()
-        if not email:
-            continue
-        lowered = email.lower()
-        if lowered in seen:
-            continue
-        seen.add(lowered)
-        out.append(email)
-    return out
-
-
 def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int:
-    state = get_section("distribution")
+    preset_emails = distribution_recipients_from_config()
     frame = card(scroll, row=row, column=0, sticky="ew", pady=(0, 12))
     frame.grid_columnconfigure(0, weight=1)
 
     r = 0
-    if not env_value("GMAIL_USER") or not env_value("GMAIL_APP_PASSWORD"):
-        ctk.CTkLabel(
-            frame,
-            text="Gmail is not configured in Settings → Environment. Build report and Drive-link emails will be skipped until you add Gmail user and app password.",
-            font=app._fonts["body_sm"],
-            text_color=COLORS["warn"],
-            wraplength=720,
-            justify="left",
-            anchor="w",
-        ).grid(row=r, column=0, sticky="ew", padx=PAD["lg"], pady=(PAD["md"], PAD["sm"]))
-        r += 1
+    gmail_ok = P.gmail_configured()
+    if not gmail_ok:
+        miss = P.missing_keys_message(("GMAIL_USER", "GMAIL_APP_PASSWORD"))
+        if miss:
+            W.build_prereq_banner(
+                frame, row=r, message=miss, fonts=app._fonts, tone="warn",
+            )
+            r += 1
 
     section_label(frame, "Distribution", app._fonts["section"]).grid(
         row=r, column=0, sticky="w", padx=PAD["lg"], pady=(PAD["md"], 5),
@@ -54,23 +37,18 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
     ).grid(row=r, column=0, sticky="w", padx=PAD["lg"], pady=(0, PAD["sm"]))
     r += 1
 
-    current_emails = [str(v).strip() for v in state] if isinstance(state, list) else []
-    current_emails = [v for v in current_emails if v]
-    current_emails = _parse_emails(",".join(current_emails))
-    preset_emails = DEFAULT_GMAIL_RECIPIENTS[:] if DEFAULT_GMAIL_RECIPIENTS else current_emails
-    selected_defaults = {email.lower() for email in current_emails} if current_emails else {email.lower() for email in preset_emails}
+    selected_defaults = {email.lower() for email in preset_emails}
 
     row_idx = r
     preset_vars: list[tuple[str, ctk.BooleanVar]] = []
     app.recipients_var = ctk.StringVar(value="")
-    preset_set = {email.lower() for email in preset_emails}
-    extra_default = ",".join(email for email in current_emails if email.lower() not in preset_set)
-    extra_var = ctk.StringVar(value=extra_default)
+    extra_var = ctk.StringVar(value="")
 
     def _refresh_runtime_recipients(*_args) -> None:
         selected = [email for email, var in preset_vars if var.get()]
         selected_set = {v.lower() for v in selected}
-        extra = [email for email in _parse_emails(extra_var.get().strip()) if email.lower() not in selected_set]
+        extra_parsed = parse_recipients([e.strip() for e in extra_var.get().split(",") if e.strip()])
+        extra = [email for email in extra_parsed if email.lower() not in selected_set]
         app.recipients_var.set(",".join(selected + extra))
 
     for email in preset_emails:
@@ -102,11 +80,14 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
     extra_var.trace_add("write", _refresh_runtime_recipients)
     _refresh_runtime_recipients()
 
-    def _serialize() -> dict:
-        extra_raw = extra_var.get().strip()
+    if not gmail_ok:
+        W.disable_section_widgets(app, "distribution")
+
+    def _serialize() -> list:
         selected = [email for email, var in preset_vars if var.get()]
         selected_set = {v.lower() for v in selected}
-        extra = [email for email in _parse_emails(extra_raw) if email.lower() not in selected_set]
+        extra_parsed = parse_recipients([e.strip() for e in extra_var.get().split(",") if e.strip()])
+        extra = [email for email in extra_parsed if email.lower() not in selected_set]
         return selected + extra
 
     app._gui_config_serializers["distribution"] = _serialize

@@ -57,6 +57,7 @@ Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; Flags: nowait
 ; Runtime files next to the exes (see app/core/constants.py frozen UPLOADER_DIR)
 Type: files; Name: "{app}\config.json"
 Type: files; Name: "{app}\.env"
+Type: filesandordirs; Name: "{app}\secrets"
 Type: filesandordirs; Name: "{app}\logs"
 Type: filesandordirs; Name: "{app}\outputs"
 

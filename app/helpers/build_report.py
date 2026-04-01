@@ -21,7 +21,7 @@ from core.constants import (
     REPORT_SECTION,
 )
 from core.steps import StepResult
-from core.config_store import build_report_recipients_from_config, env_value
+from core.config_store import env_value, logs_recipients_from_config
 
 from helpers.types import LogFn, fmt_elapsed
 
@@ -272,13 +272,13 @@ def send_build_report(
     success: bool,
     log: LogFn,
 ) -> None:
-    """Save log file and email HTML build report to ``logs_distribution`` (or DISTRIBUTION_EMAILS fallback)."""
+    """Save log file and email HTML build report to ``env.LOGS_DISTRIBUTION`` addresses."""
     log_path = save_log(log_lines, version, build)
     log(f"Build log saved → {log_path}\n")
 
-    recipients = build_report_recipients_from_config()
+    recipients = logs_recipients_from_config()
     if not recipients:
-        log("No build-report recipients: add logs_distribution in config.json or DISTRIBUTION_EMAILS in Settings. Skipping report email.\n")
+        log("No build-report recipients: add emails under LOGS_DISTRIBUTION (Settings or app/secrets/enviroment.json). Skipping report email.\n")
         return
 
     creds = _gmail_credentials()

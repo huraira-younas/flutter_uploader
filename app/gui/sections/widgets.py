@@ -67,14 +67,17 @@ def build_section_header(
 
     enabled_var = app.section_enabled_vars.get(section_key)
     if enabled_var is not None:
-        app._track_section(section_key, ctk.CTkSwitch(
+        # Use ``_track`` only — never ``_track_section``: the Enabled switch must stay
+        # clickable so the user can turn a section back on after disabling it.
+        sw = ctk.CTkSwitch(
             header,
             text="Enabled",
             variable=enabled_var,
             font=fonts["body_sm"],
             progress_color=COLORS["accent"],
             command=lambda sk=section_key: app._on_section_enabled_changed(sk),
-        )).grid(row=0, column=col, sticky="e", padx=(0, PAD["md"]))
+        )
+        app._track(sw).grid(row=0, column=col, sticky="e", padx=(0, PAD["md"]))
 
 
 def _shorebird_header_controls(
@@ -111,16 +114,19 @@ def _shorebird_header_controls(
 
     if not app._shorebird_ok:
         shorebird_var.set(False)
+        if mode_var is not None:
+            mode_var.set("Release")
+        if mode_seg is not None:
+            mode_seg.configure(state="disabled")
         cb.configure(state="disabled")
         hint = ctk.CTkLabel(
-            header, text="(not installed)",
-            font=fonts["body_sm"], text_color=COLORS["danger"],
+            header, text="(Shorebird not installed)",
+            font=fonts["body_sm"], text_color=COLORS["muted"],
         )
         hint.grid(row=0, column=col, sticky="e", padx=(0, PAD["sm"]))
         app._sb_hint_labels[section_key] = hint
         col += 1
-
-    if mode_seg is not None:
+    elif mode_seg is not None:
         mode_seg.configure(state="normal" if shorebird_var.get() else "disabled")
     return col
 
