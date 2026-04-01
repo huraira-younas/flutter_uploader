@@ -20,10 +20,10 @@ def is_macos() -> bool:
 def is_shorebird_available() -> bool:
     """Return True if the `shorebird` CLI is reachable on PATH and exits cleanly."""
     try:
-        result = subprocess.run(
-            ["shorebird", "--version"],
-            capture_output=True, timeout=10,
-        )
+        kw: dict = {"capture_output": True, "timeout": 10}
+        if _SYSTEM == "Windows" and hasattr(subprocess, "CREATE_NO_WINDOW"):
+            kw["creationflags"] = subprocess.CREATE_NO_WINDOW
+        result = subprocess.run(["shorebird", "--version"], **kw)
         return result.returncode == 0
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
         return False

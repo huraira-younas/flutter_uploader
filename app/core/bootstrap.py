@@ -3,19 +3,25 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from core.constants import UPLOADER_DIR
+from core.constants import UPLOADER_DIR, IS_WIN
 import subprocess
 import sys
 
 
 def _run_pip(args: list[str], log: Callable[[str], None]) -> int:
+    _no_win = (
+        {"creationflags": subprocess.CREATE_NO_WINDOW}
+        if IS_WIN and hasattr(subprocess, "CREATE_NO_WINDOW")
+        else {}
+    )
     proc = subprocess.Popen(
         [sys.executable, "-m", "pip"] + args,
-        cwd=UPLOADER_DIR,
-        stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        text=True,
+        stdout=subprocess.PIPE,
         bufsize=1,
+        text=True,
+        cwd=UPLOADER_DIR,
+        **_no_win,
     )
     try:
         for line in proc.stdout:

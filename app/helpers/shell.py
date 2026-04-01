@@ -139,14 +139,22 @@ def run_cmd(
 
     proc: subprocess.Popen[str] | None = None
     try:
+        # GUI apps on Windows have no console; without CREATE_NO_WINDOW, child
+        # console programs (e.g. flutter.bat) get a new cmd window.
+        _no_win = (
+            {"creationflags": subprocess.CREATE_NO_WINDOW}
+            if IS_WIN and hasattr(subprocess, "CREATE_NO_WINDOW")
+            else {}
+        )
         proc = subprocess.Popen(
             run_args,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
             start_new_session=not IS_WIN,
+            stderr=subprocess.STDOUT,
+            stdout=subprocess.PIPE,
+            bufsize=1,
             text=True,
             cwd=cwd,
-            bufsize=1,
+            **_no_win,
         )
         _register_process(proc)
     except FileNotFoundError as exc:
