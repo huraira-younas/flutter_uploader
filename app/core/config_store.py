@@ -59,7 +59,7 @@ def deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]
 def default_app_config() -> dict[str, Any]:
     """Code defaults; user file overlays this."""
     return {
-        "app_info": {"version": "", "build": ""},
+        "app_info": {"version": "", "build": "", "theme": "catppuccin_mocha"},
         "pre_git": {
             "enabled": True,
             "commit_message": DEFAULT_COMMIT_MESSAGE_PRE,

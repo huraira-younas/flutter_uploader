@@ -1,12 +1,12 @@
 # ── Secrets & local env (never commit) ────────────────────────────────────────
-# `.env*` matches `.env`, `.env.local`, etc.; keep the example file committable.
-.env*
-!.env.example
-*.env
+# `.env*` matches `app/.env`, `app/.env.local`, etc.; keep the example file committable.
+app/.env*
+!app/.env.example
+app/*.env
 
 # Google Drive OAuth (client secret + cached user token)
-gdrive_token.json
-gdrive.json
+app/gdrive_token.json
+app/gdrive.json
 **/client_secret*.json
 credentials.json
 
@@ -16,11 +16,8 @@ AuthKey_*.p8
 private_keys/
 
 # ── Generated output ──────────────────────────────────────────────────────────
-logs/
-outputs/
-
-# ── GUI preferences (local user settings) ────────────────────────────────────
-.gui_prefs.json
+app/logs/
+app/outputs/
 
 # ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
@@ -29,6 +26,8 @@ __pycache__/
 *.so
 .Python
 .venv/
+.venv-*/
+.venv*/
 venv/
 ENV/
 .envrc
@@ -37,6 +36,7 @@ ENV/
 .eggs/
 dist/
 build/
+dist-installer/
 pip-wheel-metadata/
 
 # ── Tooling / tests ───────────────────────────────────────────────────────────
@@ -48,7 +48,7 @@ htmlcov/
 .tox/
 
 # ── Optional local launcher scripts (repo root; same as `python3 run.py`) ─────
-# /uploader
+# /run
 
 # ── OS & editors ──────────────────────────────────────────────────────────────
 .DS_Store
@@ -60,3 +60,6 @@ htmlcov/
 # ── Flutter / Dart (artifacts if copied into this tree) ───────────────────────
 .dart_tool/
 **/android/.gradle/
+
+# ── macOS ─────────────────────────────────────────────────────────────────────
+.DS_Store

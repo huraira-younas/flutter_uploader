@@ -5,24 +5,24 @@
 | Resource | Where |
 |:---|:---|
 | **Read Me (app)** | Tabs: **README** · **CLI** · **Environment** |
-| **CLI file** | [`CLI_REFERENCE.md`](CLI_REFERENCE.md) |
-| **Secrets & setup** | [`ENVIRONMENT.md`](ENVIRONMENT.md) · `.env` (repo root) |
+| **CLI file** | [`app/CLI_REFERENCE.md`](app/CLI_REFERENCE.md) |
+| **Secrets & setup** | [`app/ENVIRONMENT.md`](app/ENVIRONMENT.md) · `app/.env` |
 | **Theme settings** | **Settings** tab in the GUI |
 
 ---
 
 ## Quick start
 
-Standalone Python app: **`FLUTTER_PROJECT_ROOT`** in **`.env`** points at the Flutter project you want to build (the pipeline `cd`s there for build/git steps).
+Standalone Python app: **`FLUTTER_PROJECT_ROOT`** in **`app/.env`** points at the Flutter project you want to build (the pipeline `cd`s there for build/git steps).
 
 ```bash
 cd /path/to/this/repo
 python3 run.py          # GUI — Windows: python run.py
 # OR
-./uploader # to run GUI on Windows or MAC 
+./run # to run GUI on macOS/Linux
 ```
 
-`--cli` runs headless. See [`CLI_REFERENCE.md`](CLI_REFERENCE.md). Dependencies install unless `--no-install`.
+`--cli` runs headless. See [`app/CLI_REFERENCE.md`](app/CLI_REFERENCE.md). Dependencies install unless `--no-install`.
 
 ---
 
@@ -70,7 +70,7 @@ The **Settings** tab lets you switch between built-in dark themes:
 | **One Dark** | Atom-style |
 | **Solarized Dark** | Precision palette |
 
-Click **Apply** on any theme card—the app restarts instantly with the new look. Your choice is saved to `.gui_prefs.json` (git-ignored).
+Click **Apply** on any theme card—the app restarts instantly with the new look. Your choice is saved to `app/config.json` under `app_info.theme`.
 
 ---
 

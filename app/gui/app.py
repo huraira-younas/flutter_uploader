@@ -44,6 +44,9 @@ import customtkinter as ctk
 
 class BuildApp(ctk.CTk):
     def __init__(self):
+        ensure_config_file()
+        init_app_config()
+
         saved = load_saved_theme()
         if saved:
             from gui.theme import set_theme, available_themes
@@ -51,9 +54,6 @@ class BuildApp(ctk.CTk):
                 set_theme(saved)
         super().__init__(fg_color=COLORS["bg"])
         self.protocol("WM_DELETE_WINDOW", self._on_closing)
-
-        ensure_config_file()
-        init_app_config()
 
         self._shorebird_ok = is_shorebird_available()
         self.title(f"{APP_TITLE} v{APP_VERSION}")

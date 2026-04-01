@@ -2,20 +2,17 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-import json
 import sys
 import os
 
 import customtkinter as ctk
 
+from core.config_store import get_section, get_app_config, save_config
 from gui.widgets import card, scrollable_frame, section_label
 from gui.theme import (
     available_themes, get_theme, set_theme,
     COLORS, RADIUS, PAD, Theme,
 )
-
-_PREFS_PATH = Path(__file__).resolve().parent.parent / ".gui_prefs.json"
 
 _SWATCH_KEYS = ("bg", "card_bg", "accent", "success", "danger", "warn", "text", "muted")
 
@@ -25,22 +22,21 @@ def _display_name(name: str) -> str:
 
 
 def load_saved_theme() -> str | None:
-    """Return the saved theme name from disk, or ``None``."""
+    """Return the saved theme name from config, or ``None``."""
     try:
-        data = json.loads(_PREFS_PATH.read_text(encoding="utf-8"))
-        return data.get("theme")
-    except (OSError, json.JSONDecodeError, KeyError):
+        theme = get_section("app_info").get("theme")
+    except Exception:
         return None
+    return theme if isinstance(theme, str) and theme.strip() else None
 
 
 def _save_theme(name: str) -> None:
-    prefs: dict = {}
-    try:
-        prefs = json.loads(_PREFS_PATH.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        pass
-    prefs["theme"] = name
-    _PREFS_PATH.write_text(json.dumps(prefs, indent=2), encoding="utf-8")
+    save_config(
+        {
+            **get_app_config(),
+            "app_info": {**get_section("app_info"), "theme": name},
+        }
+    )
 
 
 class SettingsPanel(ctk.CTkFrame):

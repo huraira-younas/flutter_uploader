@@ -26,7 +26,13 @@ DEFAULT_COMMIT_MESSAGE_RELEASE = "v{version} ({build})"
 
 IS_WIN = sys.platform == "win32"
 
-UPLOADER_DIR = Path(__file__).resolve().parent.parent
+if getattr(sys, "frozen", False):
+    # PyInstaller/py2app: persist config/logs next to the installed executable/app,
+    # not inside the read-only bundle.
+    UPLOADER_DIR = Path(sys.executable).resolve().parent
+else:
+    # Dev: keep config/logs/outputs under ./app/
+    UPLOADER_DIR = Path(__file__).resolve().parents[1]
 
 
 _dotenv_loaded = False
