@@ -24,8 +24,6 @@ else:
 
 SECRETS_DIR = UPLOADER_DIR / "secrets"
 
-# Repo root (parent of ``app/``) — ``README.md`` lives here; app-level docs stay under ``UPLOADER_DIR``.
-_REPO_ROOT = Path(__file__).resolve().parents[2]
 
 _flutter_project_root: Path | None = None
 
@@ -93,7 +91,7 @@ def ipa_dir() -> Path:
 
 CLI_REFERENCE_PATH = UPLOADER_DIR / "CLI_REFERENCE.md"
 ENVIRONMENT_PATH = UPLOADER_DIR / "ENVIRONMENT.md"
-README_PATH = (UPLOADER_DIR / "README.md") if getattr(sys, "frozen", False) else (_REPO_ROOT / "README.md")
+README_PATH = UPLOADER_DIR / "README.md"
 
 def pubspec_path() -> Path:
     return require_flutter_project_root() / "pubspec.yaml"

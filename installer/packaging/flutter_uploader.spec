@@ -1,14 +1,12 @@
-"""PyInstaller spec — builds GUI + CLI one-file executables.
-
-Build from repo root:
-    pyinstaller -y installer/packaging/flutter_uploader.spec
-"""
-
-from __future__ import annotations
+# PyInstaller spec — builds GUI + CLI one-file executables.
+#
+# Build from repo root:
+#     pyinstaller -y installer/packaging/flutter_uploader.spec
 
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+# SPECPATH is injected by PyInstaller — the directory containing this spec file.
+ROOT = Path(SPECPATH).parent.parent
 
 block_cipher = None
 
@@ -25,7 +23,7 @@ hiddenimports = []
 
 gui_a = Analysis(
     [str(ROOT / "installer" / "packaging" / "run_gui.py")],
-    pathex=[str(ROOT)],
+    pathex=[str(ROOT), str(ROOT / "app")],
     binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,
@@ -72,7 +70,7 @@ gui_app = BUNDLE(
 
 cli_a = Analysis(
     [str(ROOT / "installer" / "packaging" / "run_cli.py")],
-    pathex=[str(ROOT)],
+    pathex=[str(ROOT), str(ROOT / "app")],
     binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,

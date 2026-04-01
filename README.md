@@ -1,123 +1,32 @@
-# Flutter Uploader — Build & Send
+# Flutter Uploader
 
-> One pipeline for **Android** and **iOS**: build, sign, copy artifacts, upload to Drive, and optional App Store release—without juggling terminal order.
-
-| Resource | Where |
-|:---|:---|
-| **Read Me (app)** | Tabs: **README** · **CLI** · **Environment** |
-| **CLI** | [`app/CLI_REFERENCE.md`](app/CLI_REFERENCE.md) |
-| **Secrets & setup** | [`app/ENVIRONMENT.md`](app/ENVIRONMENT.md) · `app/secrets/enviroment.json` |
-| **GUI settings** | **Settings** tab: **Environment** (paths, Drive, Gmail, recipients) + **Theme** |
+> Build, sign, upload, and distribute Flutter apps — one command, both platforms.
 
 ---
 
-## Quick start
+## Installation
 
-1. **Flutter project** — In **Settings → Environment**, set **Flutter project root** (folder that contains `pubspec.yaml`) and click **Save environment**.
-
-2. Run the app from the repo:
+### From source (development)
 
 ```bash
-cd /path/to/this/repo
-python3 run.py          # GUI — Windows: python run.py
-# OR
-./run                   # macOS/Linux helper → GUI
+git clone <repo-url>
+cd flutter_uploader
+python3 app/run.py          # GUI — Windows: python app\run.py
+python3 app/run.py --cli    # headless
 ```
 
-`--cli` runs headless. See [`app/CLI_REFERENCE.md`](app/CLI_REFERENCE.md). Dependencies install unless `--no-install`.
+Dependencies are installed automatically on first launch. Pass `--no-install` to skip.
 
----
+### Installers (no Python required)
 
-## Platform support
+Pre-built installers let end users double-click and go:
 
-| OS | Android | iOS |
-|:---|:---:|:---:|
-| **macOS** | ✓ | ✓ |
-| **Windows** | ✓ | — |
+| Platform | Format | Build command |
+|:---|:---|:---|
+| **Windows** | Inno Setup EXE | `install.cmd` |
+| **macOS** | DMG | `./install.sh` |
 
----
-
-## Pipeline (what runs)
-
-| Phase | Steps |
-|:---|:---|
-| **Common** | Flutter Clean · Dependencies (`pub get` / `pub upgrade`) |
-| **Git (pre)** | Pre-release commit · Pull `master` |
-| **Android** | Build APK (release, split-per-abi) |
-| **iOS** *(Mac)* | Pod install · Build IPA · App Store upload (`xcrun altool`) |
-| **Git (post)** | Release commit · Push `master` |
-| **Post-build** | Open `outputs/` · Drive upload + email · Shutdown / sleep |
-
-Artifacts are copied into **`app/outputs/`** (next to the app); the Flutter project’s `build/` trees are left as-is.
-
----
-
-## Section toggles
-
-Each pipeline section has an **Enabled** switch. Turning a section off skips its steps. If the Flutter project root is missing or invalid, affected sections show a message and stay disabled until you fix **Settings → Environment**.
-
----
-
-## Settings
-
-### Environment
-
-Values are saved to **`app/config.json`** and **`app/secrets/enviroment.json`**, applied for the current run:
-
-| Area | What |
-|:---|:---|
-| **Project** | Flutter project root |
-| **Google Drive** | OAuth client JSON, optional token + parent folder ID |
-| **Email** | Gmail address & app password |
-| **Logs \| Distribution** | **Logs** — build-report recipients (`LOGS_DISTRIBUTION`). **Distribution** — Drive link emails (`DISTRIBUTION`). Both live in `app/secrets/enviroment.json`. |
-
-### Theme
-
-**Settings → Theme** — pick a preset and **Apply** (app restarts). Saved under `app_info.theme` in `config.json`.
-
-| Theme | Style |
-|:---|:---|
-| **Catppuccin Mocha** | Warm pastels (default) |
-| **Dracula** | Vibrant purple |
-| **Tokyo Night** | Cool, muted blue |
-| **Gruvbox** | Earthy, retro |
-| **Nord** | Arctic frost |
-| **One Dark** | Atom-style |
-| **Solarized Dark** | Precision palette |
-
----
-
-## Shorebird
-
-When the Shorebird CLI is on `PATH`, each platform header gets a **Shorebird** toggle and **Release** / **Patch** mode.
-
-| Platform | Default |
-|:---|:---|
-| **Android** | Off (plain Flutter build) |
-| **iOS** | On when CLI is installed |
-
-If Shorebird is missing, the control shows *(not installed)* and stays disabled.
-
----
-
-## Google Drive
-
-- Uploads **`outputs/`** to a Drive folder (link sharing as configured).
-- Link appears in the **Console** tab; optional emails use Gmail + recipient lists from **Settings**.
-- Needs OAuth **Desktop** client JSON (Drive API enabled). See [`ENVIRONMENT.md`](app/ENVIRONMENT.md).
-
----
-
-## App Store Connect *(Mac)*
-
-- IPA upload via **`xcrun altool`**.
-- API key **`.p8`** in `~/private_keys/` plus `APP_STORE_ISSUER_ID` and `APP_STORE_API_KEY` in **Settings → Environment**.
-
----
-
-## Environment
-
-All environment configuration lives in **`app/secrets/enviroment.json`** (git-ignored). Edit it via **Settings → Environment → Save environment** or directly. Full variable list: [`app/ENVIRONMENT.md`](app/ENVIRONMENT.md).
+Full packaging guide: [`installer/INSTALLER_GUIDE.md`](installer/INSTALLER_GUIDE.md).
 
 ---
 
@@ -133,24 +42,38 @@ All environment configuration lives in **`app/secrets/enviroment.json`** (git-ig
 
 ---
 
-## Build reports & logs
+## Project layout
 
-Every run (success, fail, or stop):
-
-- **Log file** → `app/logs/` (timestamped text file).
-- **HTML email** (if Gmail is configured): sent only to **`LOGS_DISTRIBUTION`** in `app/secrets/enviroment.json` (Settings → **Logs**).  
-  Email includes status, summary, step table, and attaches the log file.
-
-If Gmail is not set, logs are still written locally.
+```
+flutter_uploader/
+├── app/                   # application source
+│   ├── README.md          # full app documentation
+│   ├── CLI_REFERENCE.md   # CLI flags & examples
+│   ├── ENVIRONMENT.md     # environment variable reference
+│   ├── core/              # pipeline engine, config, constants
+│   ├── gui/               # CustomTkinter GUI
+│   ├── helpers/            # shell, drive upload, build reports
+│   ├── secrets/           # enviroment.json (git-ignored)
+│   ├── outputs/           # build artifacts (git-ignored)
+│   └── logs/              # run logs (git-ignored)
+├── installer/             # packaging scripts & configs
+│   ├── INSTALLER_GUIDE.md
+│   ├── packaging/         # PyInstaller specs & entry points
+│   ├── scripts/           # build_win.ps1, build_mac.sh
+│   ├── windows/           # Inno Setup .iss, uninstall script
+│   └── mac/               # DMG builder, sign/notarize, uninstall
+├── install.cmd            # one-step Windows installer build
+├── install.sh             # one-step macOS installer build
+└── README.md              # ← you are here
+```
 
 ---
 
-## Installers (shipping without Python)
+## Documentation
 
-See [`installer/INSTALLER_GUIDE.md`](installer/INSTALLER_GUIDE.md): Windows (Inno Setup) and macOS (DMG). Uninstall notes are in that guide.
-
----
-
-## CLI
-
-[`CLI_REFERENCE.md`](app/CLI_REFERENCE.md) · **Read Me → CLI** in the app. Use **`--cli`** for headless.
+| Doc | Description |
+|:---|:---|
+| [`app/README.md`](app/README.md) | App usage: pipeline, settings, themes, Shorebird, Drive, App Store |
+| [`app/CLI_REFERENCE.md`](app/CLI_REFERENCE.md) | CLI flags, section toggles, step selection |
+| [`app/ENVIRONMENT.md`](app/ENVIRONMENT.md) | Environment variables & secrets setup |
+| [`installer/INSTALLER_GUIDE.md`](installer/INSTALLER_GUIDE.md) | Building Windows EXE / macOS DMG installers |

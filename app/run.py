@@ -120,9 +120,9 @@ def _build_cli_parser() -> argparse.ArgumentParser:
 
 def _print_steps() -> None:
     from core.pipeline_config import list_steps
-    print(f"\n{APP_TITLE} — valid step keys:\n")
+    print(f"\n{APP_TITLE} - valid step keys:\n")
     print(f"  {'KEY':<20} {'LABEL':<25} SECTION")
-    print(f"  {'─' * 20} {'─' * 25} {'─' * 10}")
+    print(f"  {'-' * 20} {'-' * 25} {'-' * 10}")
     for key, label, section in list_steps():
         print(f"  {key:<20} {label:<25} {section}")
     print()
