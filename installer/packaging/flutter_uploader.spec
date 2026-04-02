@@ -26,6 +26,18 @@ datas = [
 
 hiddenimports = []
 
+MAC_INFO_PLIST = {
+    "CFBundleName": "FlutterUploader",
+    "CFBundleDisplayName": "Flutter Uploader",
+    "CFBundleShortVersionString": "5.4",
+    "CFBundleVersion": "5.4",
+    "CFBundlePackageType": "APPL",
+    "NSHighResolutionCapable": True,
+    # Ensure GUI role (not background/agent), required for Tk menu setup.
+    "LSBackgroundOnly": False,
+    "LSUIElement": False,
+}
+
 # ── GUI executable ────────────────────────────────────────────────────────────
 
 gui_a = Analysis(
@@ -60,7 +72,7 @@ if IS_DARWIN:
         upx=False,
         console=False,
         disable_windowed_traceback=False,
-        argv_emulation=True,
+        argv_emulation=False,
         target_arch=None,
         codesign_identity=None,
         entitlements_file=None,
@@ -80,6 +92,7 @@ if IS_DARWIN:
         name="FlutterUploader.app",
         icon=None,
         bundle_identifier="com.senpai.flutteruploader",
+        info_plist=MAC_INFO_PLIST,
     )
 else:
     gui_exe = EXE(
@@ -106,6 +119,7 @@ else:
         name="FlutterUploader.app",
         icon=None,
         bundle_identifier="com.senpai.flutteruploader",
+        info_plist=MAC_INFO_PLIST,
     )
 
 # ── CLI executable ────────────────────────────────────────────────────────────

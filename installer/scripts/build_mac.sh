@@ -13,7 +13,17 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT_DIR}"
 
-python3 -m venv .venv
+if [[ -z "${PYTHON_BIN:-}" ]]; then
+  if command -v python3.12 >/dev/null 2>&1; then
+    PYTHON_BIN="python3.12"
+  elif command -v python3.11 >/dev/null 2>&1; then
+    PYTHON_BIN="python3.11"
+  else
+    PYTHON_BIN="python3"
+  fi
+fi
+
+"${PYTHON_BIN}" -m venv .venv
 source .venv/bin/activate
 
 python -m pip install --upgrade pip
