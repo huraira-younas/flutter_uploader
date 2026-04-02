@@ -4,7 +4,7 @@ set -euo pipefail
 # Build Flutter Uploader macOS executables via PyInstaller.
 #
 # Outputs:
-#   dist/FlutterUploader.app   (GUI)
+#   dist/FlutterUploader.app   (GUI, onedir bundle - faster startup than one-file)
 #   dist/FlutterUploaderCLI    (CLI)
 #
 # Usage (from repo root):
@@ -23,6 +23,9 @@ rm -rf build dist
 rm -rf dist-installer
 
 pyinstaller -y installer/packaging/flutter_uploader.spec
+
+# COLLECT also writes dist/FlutterUploader/; the .app already contains that payload.
+rm -rf "${ROOT_DIR}/dist/FlutterUploader"
 
 # Frozen builds resolve UPLOADER_DIR to the folder containing the binary. The GUI
 # .app runs from Contents/MacOS; the CLI binary sits in dist/. Copy docs beside both.

@@ -1,16 +1,21 @@
-# PyInstaller spec — builds GUI + CLI one-file executables.
+# PyInstaller spec — builds GUI + CLI executables.
+#
+# macOS GUI: onedir inside the .app (no per-launch extraction to /tmp — faster cold start).
+# Windows GUI: one-file EXE (unchanged).
 #
 # Build from repo root:
 #     pyinstaller -y installer/packaging/flutter_uploader.spec
 
 from pathlib import Path
+import sys
 
 # SPECPATH is injected by PyInstaller — the directory containing this spec file.
 ROOT = Path(SPECPATH).parent.parent
+IS_DARWIN = sys.platform == "darwin"
 
 block_cipher = None
 
-# Bundled for _MEIPASS; build_win.ps1 / build_mac.sh also copy these next to the
+# Bundled for _MEIPASS / onedir; build_win.ps1 / build_mac.sh also copy these next to the
 # built binaries because frozen UPLOADER_DIR is the exe directory, not the bundle.
 datas = [
     (str(ROOT / "README.md"), "."),
@@ -41,32 +46,67 @@ gui_a = Analysis(
 
 gui_pyz = PYZ(gui_a.pure, gui_a.zipped_data, cipher=block_cipher)
 
-gui_exe = EXE(
-    gui_pyz,
-    gui_a.scripts,
-    gui_a.binaries,
-    gui_a.zipfiles,
-    gui_a.datas,
-    [],
-    name="FlutterUploader",
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=True,
-    console=False,
-    disable_windowed_traceback=False,
-    argv_emulation=True,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-)
-
-gui_app = BUNDLE(
-    gui_exe,
-    name="FlutterUploader.app",
-    icon=None,
-    bundle_identifier="com.senpai.flutteruploader",
-)
+if IS_DARWIN:
+    # Onedir: dependencies live on disk inside the bundle — avoids extracting every launch.
+    gui_exe = EXE(
+        gui_pyz,
+        gui_a.scripts,
+        [],
+        exclude_binaries=True,
+        name="FlutterUploader",
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        upx=False,
+        console=False,
+        disable_windowed_traceback=False,
+        argv_emulation=True,
+        target_arch=None,
+        codesign_identity=None,
+        entitlements_file=None,
+    )
+    gui_coll = COLLECT(
+        gui_exe,
+        gui_a.binaries,
+        gui_a.zipfiles,
+        gui_a.datas,
+        strip=False,
+        upx=False,
+        upx_exclude=[],
+        name="FlutterUploader",
+    )
+    gui_app = BUNDLE(
+        gui_coll,
+        name="FlutterUploader.app",
+        icon=None,
+        bundle_identifier="com.senpai.flutteruploader",
+    )
+else:
+    gui_exe = EXE(
+        gui_pyz,
+        gui_a.scripts,
+        gui_a.binaries,
+        gui_a.zipfiles,
+        gui_a.datas,
+        [],
+        name="FlutterUploader",
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        upx=True,
+        console=False,
+        disable_windowed_traceback=False,
+        argv_emulation=True,
+        target_arch=None,
+        codesign_identity=None,
+        entitlements_file=None,
+    )
+    gui_app = BUNDLE(
+        gui_exe,
+        name="FlutterUploader.app",
+        icon=None,
+        bundle_identifier="com.senpai.flutteruploader",
+    )
 
 # ── CLI executable ────────────────────────────────────────────────────────────
 

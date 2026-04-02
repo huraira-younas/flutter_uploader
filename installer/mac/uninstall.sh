@@ -78,3 +78,6 @@ if [[ -f "${PLIST}" ]]; then
 fi
 
 echo "Done."
+echo ""
+echo "Dock icons are separate from Applications: uninstall does not remove pinned tiles."
+echo "Remove leftover icons: drag each off the Dock until Remove appears, or right-click the icon → Options → Remove from Dock."
