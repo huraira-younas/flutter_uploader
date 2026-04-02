@@ -10,10 +10,268 @@ import os
 
 from core.constants import IS_WIN, ORPHAN_PATTERNS
 from helpers.types import LogFn, StopCheckFn
+from core.config_store import env_value, get_app_config, get_section, save_config
 
 _ACTIVE_PROCS: set[subprocess.Popen[str]] = set()
 _PROCS_LOCK = Lock()
 _EOF = object()
+
+_CACHED_FLUTTER_BIN: str | None = None
+_PERSISTED_FLUTTER_BIN: bool = False
+_PATH_SEP = os.pathsep
+
+
+def _normalize_path_seg(p: str) -> str:
+    """Expand env/user tokens; normalize slashes on Windows."""
+    expanded = os.path.expandvars(os.path.expanduser(p)) if IS_WIN else os.path.expanduser(p)
+    return os.path.normpath(expanded) if IS_WIN else expanded
+
+
+def _split_path(raw: str) -> list[str]:
+    parts = [p.strip() for p in str(raw or "").split(_PATH_SEP)]
+    return [p for p in parts if p]
+
+
+def _is_executable_file(path: Path) -> bool:
+    try:
+        return path.is_file() and os.access(path, os.X_OK)
+    except OSError:
+        return False
+
+
+def _is_flutter_invokable(path: Path) -> bool:
+    """True if *path* can be passed to ``Popen`` as the Flutter CLI (mac + Windows)."""
+    try:
+        if not path.is_file():
+            return False
+    except OSError:
+        return False
+    if IS_WIN:
+        suf = path.suffix.lower()
+        return suf in (".bat", ".cmd", ".exe") or (suf == "" and _is_executable_file(path))
+    return _is_executable_file(path)
+
+
+def _flutter_filenames_in_bin_dir(bin_dir: Path) -> list[Path]:
+    """Ordered candidates inside a Flutter SDK ``bin`` directory."""
+    if IS_WIN:
+        return [
+            bin_dir / "flutter.bat",
+            bin_dir / "flutter.cmd",
+            bin_dir / "flutter.exe",
+            bin_dir / "flutter",
+        ]
+    return [bin_dir / "flutter"]
+
+
+def _windows_registry_path_entries() -> list[str]:
+    """User + machine PATH from registry (GUI apps often lack the full interactive PATH)."""
+    try:
+        import winreg
+    except ImportError:
+        return []
+    out: list[str] = []
+    for root, subkey in (
+        (winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"),
+        (winreg.HKEY_CURRENT_USER, r"Environment"),
+    ):
+        try:
+            with winreg.OpenKey(root, subkey) as k:
+                path_val, _ = winreg.QueryValueEx(k, "PATH")
+                out.extend(_normalize_path_seg(x) for x in _split_path(str(path_val)))
+        except OSError:
+            continue
+    return out
+
+
+def _resolve_tool_override(executable: str) -> str | None:
+    """Resolve an explicit tool path override for known tools.
+
+    Supported config/env keys:
+    - FLUTTER_BIN: absolute path to flutter executable (highest priority)
+    """
+    exe = str(executable).strip()
+    if exe != "flutter":
+        return None
+
+    flutter_bin = env_value("FLUTTER_BIN").strip()
+    if flutter_bin:
+        p = Path(flutter_bin).expanduser().resolve()
+        return str(p) if _is_flutter_invokable(p) else None
+
+    return None
+
+
+def _default_path_entries() -> list[str]:
+    """Best-effort PATH for GUI-launched apps (minimal env from Finder / Windows shell)."""
+    if IS_WIN:
+        home = Path.home()
+        la = os.environ.get("LOCALAPPDATA", "").strip()
+        candidates: list[str] = _windows_registry_path_entries() + [
+            str(home / "flutter" / "bin"),
+            str(home / "development" / "flutter" / "bin"),
+            str(home / "src" / "flutter" / "bin"),
+            str(Path("C:/src/flutter/bin")),
+            str(Path("C:/flutter/bin")),
+            str(Path("C:/tools/flutter/bin")),
+            *( [str(Path(la) / "flutter" / "bin")] if la else [] ),
+            r"C:\Program Files\Git\cmd",
+            r"C:\Program Files (x86)\Git\cmd",
+        ]
+        out: list[str] = []
+        seen: set[str] = set()
+        for p in candidates:
+            norm = _normalize_path_seg(p)
+            if not norm or norm in seen:
+                continue
+            seen.add(norm)
+            if os.path.isdir(norm):
+                out.append(norm)
+        return out
+
+    candidates: list[str] = [
+        "/opt/homebrew/bin",
+        "/opt/homebrew/sbin",
+        "/usr/local/bin",
+        "/usr/local/sbin",
+        "/usr/bin",
+        "/bin",
+        "/usr/sbin",
+        "/sbin",
+    ]
+    out: list[str] = []
+    seen: set[str] = set()
+    for p in candidates:
+        if p in seen:
+            continue
+        seen.add(p)
+        if os.path.isdir(p):
+            out.append(p)
+    return out
+
+
+def _build_subprocess_env() -> dict[str, str]:
+    """Build a stable env for subprocesses, especially for packaged GUI apps."""
+    env = {k: str(v) for k, v in os.environ.items()}
+    base_path = _split_path(env.get("PATH", ""))
+    default_entries = _default_path_entries()
+
+    merged: list[str] = []
+    seen: set[str] = set()
+    for p in base_path + default_entries:
+        seg = _normalize_path_seg(p) if IS_WIN else p
+        if not seg or seg in seen:
+            continue
+        seen.add(seg)
+        merged.append(seg)
+    env["PATH"] = _PATH_SEP.join(merged)
+    return env
+
+
+def _flutter_candidate_paths(*, cwd: Path | None = None) -> list[Path]:
+    """Common Flutter install locations + FVM project SDK (macOS and Windows)."""
+    home = Path.home()
+    bin_dirs: list[Path] = [
+        home / "flutter" / "bin",
+        home / "development" / "flutter" / "bin",
+        home / "Developer" / "flutter" / "bin",
+        home / "sdk" / "flutter" / "bin",
+        home / "Documents" / "flutter" / "bin",
+        home / "src" / "flutter" / "bin",
+        home / "fvm" / "default" / "bin",
+    ]
+    if IS_WIN:
+        la = os.environ.get("LOCALAPPDATA", "").strip()
+        if la:
+            bin_dirs.append(Path(la) / "flutter" / "bin")
+        bin_dirs.extend(
+            [
+                Path(r"C:\src\flutter\bin"),
+                Path(r"C:\flutter\bin"),
+                Path(r"C:\tools\flutter\bin"),
+            ]
+        )
+    else:
+        bin_dirs.extend(
+            [
+                Path("/opt/homebrew/bin"),
+                Path("/usr/local/bin"),
+                Path("/usr/bin"),
+            ]
+        )
+
+    candidates: list[Path] = []
+    for d in bin_dirs:
+        candidates.extend(_flutter_filenames_in_bin_dir(d))
+
+    if not IS_WIN:
+        candidates.extend(
+            [
+                Path("/opt/homebrew/bin/flutter"),
+                Path("/usr/local/bin/flutter"),
+                Path("/usr/bin/flutter"),
+            ]
+        )
+
+    if cwd:
+        try:
+            p = cwd.expanduser().resolve()
+        except OSError:
+            p = None
+        if p:
+            for rel in (
+                p / ".fvm" / "flutter_sdk" / "bin",
+                p / "ios" / ".fvm" / "flutter_sdk" / "bin",
+            ):
+                candidates.extend(_flutter_filenames_in_bin_dir(rel))
+    return candidates
+
+
+def _autodetect_flutter_bin(*, env: dict[str, str], cwd: Path) -> str | None:
+    """Locate flutter without user configuration (session cache)."""
+    global _CACHED_FLUTTER_BIN
+    if _CACHED_FLUTTER_BIN:
+        p = Path(_CACHED_FLUTTER_BIN)
+        return _CACHED_FLUTTER_BIN if _is_flutter_invokable(p) else None
+
+    path_var = env.get("PATH", "")
+    found = shutil.which("flutter", path=path_var)
+    if found:
+        _CACHED_FLUTTER_BIN = found
+        return found
+    if IS_WIN:
+        found_bat = shutil.which("flutter.bat", path=path_var)
+        if found_bat:
+            _CACHED_FLUTTER_BIN = found_bat
+            return found_bat
+
+    for p in _flutter_candidate_paths(cwd=cwd):
+        if _is_flutter_invokable(p):
+            _CACHED_FLUTTER_BIN = str(p.resolve())
+            return _CACHED_FLUTTER_BIN
+    return None
+
+
+def _persist_detected_flutter_bin(path: str) -> None:
+    """Persist the detected flutter path so next launch doesn't need scanning."""
+    global _PERSISTED_FLUTTER_BIN
+    if _PERSISTED_FLUTTER_BIN:
+        return
+
+    if env_value("FLUTTER_BIN").strip():
+        _PERSISTED_FLUTTER_BIN = True
+        return
+
+    p = Path(path).expanduser()
+    if not _is_flutter_invokable(p):
+        return
+
+    try:
+        merged = {**get_app_config(), "env": {**get_section("env"), "FLUTTER_BIN": str(p.resolve())}}
+        save_config(merged)
+        _PERSISTED_FLUTTER_BIN = True
+    except Exception:
+        return
 
 
 def _register_process(proc: subprocess.Popen[str]) -> None:
@@ -124,13 +382,31 @@ def run_cmd(
         log(header)
 
     executable = cmd[0]
-    resolved_executable = shutil.which(executable)
+    env = _build_subprocess_env()
+    resolved_executable = _resolve_tool_override(executable) or shutil.which(executable, path=env.get("PATH", ""))
+    if resolved_executable is None and executable == "flutter":
+        detected = _autodetect_flutter_bin(env=env, cwd=cwd)
+        if detected:
+            try:
+                flutter_bin_dir = str(Path(detected).resolve().parent)
+            except OSError:
+                flutter_bin_dir = ""
+            if flutter_bin_dir:
+                env["PATH"] = _PATH_SEP.join([flutter_bin_dir] + _split_path(env.get("PATH", "")))
+            resolved_executable = detected
+            _persist_detected_flutter_bin(detected)
 
     if resolved_executable is None:
+        verify_hint = (
+            "You can verify in Command Prompt: `where flutter` then `flutter --version`.\n"
+            if IS_WIN
+            else "You can verify in Terminal: `which flutter` then `flutter --version`.\n"
+        )
         log(
             f"\nError: command not found: '{executable}'.\n"
-            "Make sure Flutter is installed and available in PATH.\n"
-            "You can verify in terminal with: flutter --version\n"
+            "Make sure Flutter is installed and on PATH (or use a default install location).\n"
+            "Tip: Flutter Uploader auto-detects common installs; for custom locations set FLUTTER_BIN in Settings → Environment.\n"
+            + verify_hint
         )
         return False
 
@@ -154,6 +430,7 @@ def run_cmd(
             bufsize=1,
             text=True,
             cwd=cwd,
+            env=env,
             **_no_win,
         )
         _register_process(proc)

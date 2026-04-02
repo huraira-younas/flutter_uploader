@@ -82,6 +82,7 @@ def default_app_config() -> dict[str, Any]:
             "APP_STORE_API_KEY": "",
             "LOGS_DISTRIBUTION": [],
             "DISTRIBUTION": [],
+            "FLUTTER_BIN": "",
             "GMAIL_USER": "",
         },
         "pre_git": {

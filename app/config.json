@@ -5,52 +5,52 @@
     "build": "223"
   },
   "pre_git": {
-    "enabled": true,
+    "enabled": false,
     "commit_message": "pre-release cleanup",
     "steps": {
-      "git_commit_pre": true,
-      "git_pull": true
+      "git_commit_pre": false,
+      "git_pull": false
     }
   },
   "common": {
     "enabled": true,
-    "pub_mode": "pub get",
+    "pub_mode": "pub upgrade",
     "steps": {
       "clean": false,
-      "pub_get": false
+      "pub_get": true
     }
   },
   "post_git": {
-    "enabled": true,
+    "enabled": false,
     "commit_message": "v{version} ({build})",
     "steps": {
-      "git_commit_rel": true,
-      "git_push": true
+      "git_commit_rel": false,
+      "git_push": false
     }
   },
   "android": {
-    "enabled": true,
+    "enabled": false,
     "steps": {
-      "build_apk": true,
-      "build_aab": true
+      "build_apk": false,
+      "build_aab": false
     }
   },
   "ios": {
-    "enabled": true,
+    "enabled": false,
     "steps": {
-      "pod_install": true,
-      "build_ipa": true,
-      "appstore_upload": true
+      "pod_install": false,
+      "build_ipa": false,
+      "appstore_upload": false
     }
   },
   "post_build": {
-    "enabled": true,
+    "enabled": false,
     "power_mode": "Sleep",
-    "quit_after_power": true,
+    "quit_after_power": false,
     "steps": {
       "open_folders": false,
-      "drive_upload": true,
-      "shutdown": true
+      "drive_upload": false,
+      "shutdown": false
     }
   }
 }

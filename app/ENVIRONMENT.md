@@ -15,6 +15,7 @@ All environment configuration is stored in **`app/secrets/enviroment.json`** (gi
 | Variable | Notes |
 |:---|:---|
 | `FLUTTER_PROJECT_ROOT` | Path to Flutter project (`pubspec.yaml`) |
+| `FLUTTER_BIN` | Optional override; app auto-detects Flutter on macOS/Windows and saves `FLUTTER_BIN` when found |
 | `GOOGLE_DRIVE_CREDENTIALS_JSON` | OAuth Desktop client JSON (path; relative paths are from this app directory) |
 | `GOOGLE_DRIVE_TOKEN_JSON` | Optional · default `gdrive_token.json` beside the client secret |
 | `GOOGLE_DRIVE_FOLDER_ID` | Optional Drive folder ID |
