@@ -16,7 +16,7 @@ ANDROID_STEPS: list[StepDef] = [
 ]
 
 IOS_STEPS: list[StepDef] = [
-    ("pod_install", "Pod Install", "Deintegrate + repo update + install", False),
+    ("pod_update", "Pod Update", "Deintegrate + repo update + update", False),
     ("build_ipa", "Build IPA", "Release archive", True),
     ("appstore_upload", "App Store Upload", "Upload to App Store Connect", True),
 ]

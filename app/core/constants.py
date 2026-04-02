@@ -25,12 +25,10 @@ if getattr(sys, "frozen", False):
     else:
         base_dir = Path.home() / ".config"
     UPLOADER_DIR = (base_dir / APP_DIR_NAME).resolve()
-    LEGACY_UPLOADER_DIR: Path | None = BUNDLE_DIR
 else:
     # Dev: keep config/logs/outputs under ./app/
     BUNDLE_DIR = Path(__file__).resolve().parents[1]
     UPLOADER_DIR = BUNDLE_DIR
-    LEGACY_UPLOADER_DIR = None
 
 SECRETS_DIR = UPLOADER_DIR / "secrets"
 

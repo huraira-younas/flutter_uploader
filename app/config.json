@@ -38,7 +38,7 @@
   "ios": {
     "enabled": true,
     "steps": {
-      "pod_install": true,
+      "pod_update": true,
       "build_ipa": true,
       "appstore_upload": true
     }

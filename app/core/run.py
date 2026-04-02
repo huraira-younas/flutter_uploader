@@ -144,16 +144,16 @@ def run_build_aab(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None)
     )
 
 
-def run_pod_install(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
+def run_pod_update(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
     ios_dir = flutter_project_root() / "ios"
     if not ios_dir.exists():
-        log("iOS directory not found. Skipping pod install.\n")
+        log("iOS directory not found. Skipping pod update.\n")
         return False
     if not _cmd().run_in(["pod", "deintegrate"], ios_dir, log, header="\n>> pod deintegrate\n", stop_check=stop_check):
         return False
     if not _cmd().run_in(["pod", "repo", "update"], ios_dir, log, header="\n>> pod repo update\n", stop_check=stop_check):
         return False
-    return _cmd().run_in(["pod", "install"], ios_dir, log, header="\n>> pod install\n", stop_check=stop_check)
+    return _cmd().run_in(["pod", "update"], ios_dir, log, header="\n>> pod update\n", stop_check=stop_check)
 
 
 def run_build_ipa(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
@@ -272,7 +272,7 @@ def _build_runners(
         "shutdown":        lambda l: power_fn(l),
 
         "clean":           with_stop(run_flutter_clean),
-        "pod_install":     with_stop(run_pod_install),
+        "pod_update":      with_stop(run_pod_update),
         "git_push":        with_stop(run_git_push),
         "git_pull":        with_stop(run_git_pull),
         "pub_get":         with_stop(pub_fn),

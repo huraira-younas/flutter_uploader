@@ -19,7 +19,6 @@ import os
 from core.constants import (
     DEFAULT_COMMIT_MESSAGE_RELEASE,
     DEFAULT_COMMIT_MESSAGE_PRE,
-    LEGACY_UPLOADER_DIR,
     UPLOADER_DIR,
     SECRETS_DIR,
 )
@@ -52,35 +51,6 @@ CONFIG_SECTION_KEYS: tuple[str, ...] = (
 )
 
 _cache: dict[str, Any] | None = None
-_migration_checked = False
-
-
-def _migrate_legacy_storage_once() -> None:
-    """One-time migration from legacy frozen bundle storage to user app-data dir."""
-    global _migration_checked
-    if _migration_checked:
-        return
-    _migration_checked = True
-
-    if LEGACY_UPLOADER_DIR is None or LEGACY_UPLOADER_DIR == UPLOADER_DIR:
-        return
-
-    legacy_config = LEGACY_UPLOADER_DIR / "config.json"
-    legacy_env = LEGACY_UPLOADER_DIR / "secrets" / "enviroment.json"
-
-    try:
-        if legacy_config.is_file() and not CONFIG_PATH.exists():
-            CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-            CONFIG_PATH.write_text(legacy_config.read_text(encoding="utf-8"), encoding="utf-8")
-    except OSError:
-        pass
-
-    try:
-        if legacy_env.is_file() and not ENVIRONMENT_JSON_PATH.exists():
-            ENVIRONMENT_JSON_PATH.parent.mkdir(parents=True, exist_ok=True)
-            ENVIRONMENT_JSON_PATH.write_text(legacy_env.read_text(encoding="utf-8"), encoding="utf-8")
-    except OSError:
-        pass
 
 
 def deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -136,7 +106,7 @@ def default_app_config() -> dict[str, Any]:
         },
         "ios": {
             "enabled": True,
-            "steps": {"pod_install": False, "build_ipa": True, "appstore_upload": True},
+            "steps": {"pod_update": False, "build_ipa": True, "appstore_upload": True},
         },
         "post_build": {
             "enabled": True,
@@ -175,7 +145,6 @@ def _load_environment_json_file() -> dict[str, Any]:
 
 
 def _read_merged_from_disk() -> dict[str, Any]:
-    _migrate_legacy_storage_once()
     base = default_app_config()
     saved: dict[str, Any] = {}
     if CONFIG_PATH.is_file():
@@ -257,7 +226,6 @@ def save_config(data: dict[str, Any]) -> None:
 
 def ensure_config_file() -> None:
     """Create ``config.json`` (defaults snapshot) if missing. Does not write ``secrets/enviroment.json``."""
-    _migrate_legacy_storage_once()
     if CONFIG_PATH.is_file():
         return
     try:

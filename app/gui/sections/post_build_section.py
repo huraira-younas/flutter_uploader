@@ -5,12 +5,14 @@ from __future__ import annotations
 import customtkinter as ctk
 
 from gui.sections.contracts import ConfigPanelHost
+from core.constants import OUTPUTS_DIR
 from core.config_store import get_section
 from gui.widgets import segmented_button
 from gui.sections import prerequisites as P
 from gui.sections import widgets as W
 from core.steps import POST_STEPS
 from gui.theme import PAD
+from helpers.platform_utils import open_folder
 
 
 def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int:
@@ -47,7 +49,10 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
     W.build_step_rows_from_defs(
         c, app=app, section_key="post", steps=list(POST_STEPS),
         first_grid_row=1 + off, step_var_overrides=overrides,
-        trailing_widgets_by_key={"shutdown": _shutdown_controls(app)},
+        trailing_widgets_by_key={
+            "open_folders": _open_outputs_now_button(app),
+            "shutdown": _shutdown_controls(app),
+        },
     )
     if "drive_upload" in app._steps_disabled_by_prereq:
         app.step_vars["drive_upload"].set(False)
@@ -64,6 +69,32 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
 
     app._gui_config_serializers["post_build"] = _serialize
     return row + 1
+
+
+def _open_outputs_now_button(app: ConfigPanelHost):
+    def _build(parent: ctk.CTkFrame, start_col: int) -> int:
+        def _open_now() -> None:
+            log = getattr(app, "log", None)
+            sink = log if callable(log) else (lambda _m: None)
+            try:
+                OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
+            except OSError as exc:
+                sink(f"Failed to create outputs folder: {exc}\n")
+                return
+            sink(f"\n>> Open outputs folder: {OUTPUTS_DIR}\n")
+            open_folder(OUTPUTS_DIR, sink)
+
+        btn = app._track_section("post", ctk.CTkButton(
+            parent,
+            text="Open now",
+            font=app._fonts["body_sm"],
+            command=_open_now,
+            width=88,
+        ))
+        btn.grid(row=0, column=start_col, padx=(0, PAD["sm"]), sticky="e")
+        return start_col + 1
+
+    return _build
 
 
 def _shutdown_controls(app: ConfigPanelHost):
