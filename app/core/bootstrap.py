@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from core.constants import BUNDLE_DIR, IS_WIN
 from collections.abc import Callable
-from core.constants import UPLOADER_DIR, IS_WIN
 import subprocess
 import sys
 
@@ -20,7 +20,7 @@ def _run_pip(args: list[str], log: Callable[[str], None]) -> int:
         stdout=subprocess.PIPE,
         bufsize=1,
         text=True,
-        cwd=UPLOADER_DIR,
+        cwd=BUNDLE_DIR,
         **_no_win,
     )
     try:
@@ -35,7 +35,7 @@ def _run_pip(args: list[str], log: Callable[[str], None]) -> int:
 
 def ensure_dependencies(log: Callable[[str], None] = print) -> None:
     """Install requirements and run pip check if requirements.txt is present."""
-    reqs = UPLOADER_DIR / "requirements.txt"
+    reqs = BUNDLE_DIR / "requirements.txt"
     if not reqs.exists():
         log(">> No requirements.txt found; skipping dependency check.\n")
         return

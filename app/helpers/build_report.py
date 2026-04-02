@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 from email.mime.multipart import MIMEMultipart
+from collections.abc import Iterable
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from datetime import datetime
@@ -14,16 +14,16 @@ import smtplib
 
 from core.constants import (
     REPORT_BODY_OPEN, REPORT_BODY_CLOSE, REPORT_BORDER_LR,
-    APP_TITLE, APP_VERSION, LOGS_DIR,
-    REPORT_SECTION_H2, REPORT_TH_STYLE,
-    REPORT_ACCENT, REPORT_CARD_BORDER, REPORT_CARD_BG,
     REPORT_BG, REPORT_SUCCESS, REPORT_ERROR, REPORT_MUTED,
+    REPORT_ACCENT, REPORT_CARD_BORDER, REPORT_CARD_BG,
+    REPORT_SECTION_H2, REPORT_TH_STYLE,
+    APP_TITLE, APP_VERSION, LOGS_DIR,
     REPORT_SECTION,
 )
-from core.steps import StepResult
-from core.config_store import env_value, logs_recipients_from_config
 
+from core.config_store import env_value, logs_recipients_from_config
 from helpers.types import LogFn, fmt_elapsed
+from core.steps import StepResult
 
 
 # ── Shared HTML fragments ────────────────────────────────────────────────────
@@ -278,7 +278,7 @@ def send_build_report(
 
     recipients = logs_recipients_from_config()
     if not recipients:
-        log("No build-report recipients: add emails under LOGS_DISTRIBUTION (Settings or app/secrets/enviroment.json). Skipping report email.\n")
+        log("No build-report recipients: add emails under LOGS_DISTRIBUTION (Settings → Environment). Skipping report email.\n")
         return
 
     creds = _gmail_credentials()

@@ -27,7 +27,7 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
             row=off,
             message=(
                 "App Store upload requires APP_STORE_ISSUER_ID and APP_STORE_API_KEY in "
-                "app/secrets/enviroment.json (Settings → Save environment)."
+                "Settings → Environment (Save environment)."
             ),
             fonts=app._fonts,
             tone="warn",

@@ -14,7 +14,7 @@ import customtkinter as ctk
 from core.constants import (
     CLI_REFERENCE_PATH,
     ENVIRONMENT_PATH,
-    UPLOADER_DIR,
+    BUNDLE_DIR,
     README_PATH,
 )
 
@@ -288,7 +288,7 @@ class ReadMePanel(ctk.CTkFrame):
                 "Read Me dependencies missing.\n\n"
                 f"{missing}\n\n"
                 "Install with:\n"
-                f"  pip install -r {UPLOADER_DIR / 'requirements.txt'}"
+                f"  pip install -r {BUNDLE_DIR / 'requirements.txt'}"
             )
             for title, _ in self._DOC_TABS:
                 self._show_error_in_tab(self._tab_frames[title], msg)

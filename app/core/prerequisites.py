@@ -23,7 +23,7 @@ def missing_keys_message(keys: tuple[str, ...]) -> str | None:
     if not miss:
         return None
     lines = "\n".join(f"  • {k}" for k in miss)
-    return f"Set in app/secrets/enviroment.json (Settings → Save environment):\n{lines}"
+    return f"Set in Settings → Environment → Save environment:\n{lines}"
 
 
 def drive_creds_configured() -> bool:
@@ -43,7 +43,7 @@ def flutter_project_prereq_status() -> tuple[bool, str]:
     raw = env_config_str("FLUTTER_PROJECT_ROOT")
     if not raw:
         return False, (
-            "Set FLUTTER_PROJECT_ROOT in app/secrets/enviroment.json (Settings → Environment → Save)."
+            "Set FLUTTER_PROJECT_ROOT in Settings → Environment → Save."
         )
     p = Path(raw).expanduser().resolve()
     if not p.is_dir():

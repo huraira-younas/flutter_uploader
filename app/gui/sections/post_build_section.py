@@ -33,7 +33,7 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
             row=off,
             message=(
                 "Upload to Drive requires GOOGLE_DRIVE_CREDENTIALS_JSON in "
-                "app/secrets/enviroment.json (Settings → Save environment)."
+                "Settings → Environment (Save environment)."
             ),
             fonts=app._fonts,
             tone="warn",

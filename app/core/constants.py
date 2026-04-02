@@ -5,6 +5,7 @@ import os
 import re
 
 
+APP_DIR_NAME = "FlutterUploader"
 APP_TITLE = "Flutter Uploader"
 APP_VERSION = "5.4"
 
@@ -15,12 +16,21 @@ DEFAULT_COMMIT_MESSAGE_RELEASE = "v{version} ({build})"
 IS_WIN = sys.platform == "win32"
 
 if getattr(sys, "frozen", False):
-    # PyInstaller/py2app: persist config/logs next to the installed executable/app,
-    # not inside the read-only bundle.
-    UPLOADER_DIR = Path(sys.executable).resolve().parent
+    BUNDLE_DIR = Path(sys.executable).resolve().parent
+    if IS_WIN:
+        appdata = os.environ.get("APPDATA", "").strip()
+        base_dir = Path(appdata).expanduser() if appdata else (Path.home() / "AppData" / "Roaming")
+    elif sys.platform == "darwin":
+        base_dir = Path.home() / "Library" / "Application Support"
+    else:
+        base_dir = Path.home() / ".config"
+    UPLOADER_DIR = (base_dir / APP_DIR_NAME).resolve()
+    LEGACY_UPLOADER_DIR: Path | None = BUNDLE_DIR
 else:
     # Dev: keep config/logs/outputs under ./app/
-    UPLOADER_DIR = Path(__file__).resolve().parents[1]
+    BUNDLE_DIR = Path(__file__).resolve().parents[1]
+    UPLOADER_DIR = BUNDLE_DIR
+    LEGACY_UPLOADER_DIR = None
 
 SECRETS_DIR = UPLOADER_DIR / "secrets"
 
@@ -56,7 +66,7 @@ def require_flutter_project_root() -> Path:
     if not raw:
         raise ProjectRootNotConfiguredError(
             "FLUTTER_PROJECT_ROOT is required. Set Flutter project root in "
-            "Settings → Environment or in app/secrets/enviroment.json."
+            "Settings → Environment."
         )
     p = Path(raw).expanduser().resolve()
     if not p.is_dir():
@@ -93,9 +103,9 @@ def aab_dir() -> Path:
 def ipa_dir() -> Path:
     return require_flutter_project_root() / "build" / "ios" / "ipa"
 
-CLI_REFERENCE_PATH = UPLOADER_DIR / "CLI_REFERENCE.md"
-ENVIRONMENT_PATH = UPLOADER_DIR / "ENVIRONMENT.md"
-README_PATH = UPLOADER_DIR / "README.md"
+CLI_REFERENCE_PATH = BUNDLE_DIR / "CLI_REFERENCE.md"
+ENVIRONMENT_PATH = BUNDLE_DIR / "ENVIRONMENT.md"
+README_PATH = BUNDLE_DIR / "README.md"
 
 def pubspec_path() -> Path:
     return require_flutter_project_root() / "pubspec.yaml"

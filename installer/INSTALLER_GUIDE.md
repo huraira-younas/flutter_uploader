@@ -49,7 +49,7 @@ Output: `dist-installer\FlutterUploader-Setup.exe`
 - **Start Menu** — App launcher, CLI shortcut, and uninstaller.
 - **Finish** — Optional **Launch** Flutter Uploader when the wizard completes.
 
-> **Uninstall** is different: the uninstaller removes the app files **and** (by design) `config.json`, `secrets\`, `logs\`, and `outputs\` under the install folder so user data is cleaned. That only runs when you uninstall, not during install.
+> **Uninstall** is different: the uninstaller removes app files and user data. It cleans legacy data under the install folder (`config.json`, `secrets\`, `logs\`, `outputs\`) and current user app data under `%APPDATA%\FlutterUploader`.
 
 ### Uninstall (Windows)
 
@@ -64,7 +64,7 @@ Three options:
 .\installer\windows\uninstall.ps1 -Silent    # quiet mode
 ```
 
-The installer also removes `config.json`, `secrets\`, `logs\`, and `outputs\` under the install folder during uninstall.
+The installer removes legacy install-folder data and `%APPDATA%\FlutterUploader` during uninstall.
 
 ### Windows code signing (optional)
 
@@ -120,7 +120,7 @@ Two options:
 ./installer/mac/uninstall.sh
 ```
 
-These remove `FlutterUploader.app` from `/Applications` and `~/Applications`.
+These remove `FlutterUploader.app` from `/Applications` and `~/Applications`, plus user data under `~/Library/Application Support/FlutterUploader` (and legacy `~/Library/Application Support/Flutter Uploader`).
 
 ### macOS signing + notarization (recommended for distribution)
 
@@ -140,14 +140,14 @@ This codesigns the `.app`, submits it to Apple notarization, staples the ticket,
 
 ## Configuration after install
 
-The installed app stores its configuration in the same directory as the executable:
+The installed app stores configuration in per-user app-data directories:
 
 | File | Purpose |
 |:---|:---|
-| `config.json` | Section toggles, version, theme, commit messages |
-| `secrets/enviroment.json` | Flutter project root, Drive/Gmail credentials, recipient lists |
-| `logs/` | Build log files |
-| `outputs/` | Copied build artifacts (APK/IPA) |
+| `%APPDATA%\FlutterUploader\config.json` *(Windows)* / `~/Library/Application Support/FlutterUploader/config.json` *(macOS)* | Section toggles, version, theme, commit messages |
+| `%APPDATA%\FlutterUploader\secrets/enviroment.json` *(Windows)* / `~/Library/Application Support/FlutterUploader/secrets/enviroment.json` *(macOS)* | Flutter project root, Drive/Gmail credentials, recipient lists |
+| `%APPDATA%\FlutterUploader\logs` / `~/Library/Application Support/FlutterUploader/logs` | Build log files |
+| `%APPDATA%\FlutterUploader\outputs` / `~/Library/Application Support/FlutterUploader/outputs` | Copied build artifacts (APK/IPA) |
 
 Use **Settings > Environment** in the GUI to configure paths and credentials. No `.env` files are used.
 

@@ -1,6 +1,6 @@
 # Environment
 
-All environment configuration is stored in **`app/secrets/enviroment.json`** (git-ignored).  Edit it directly or use **Settings → Environment → Save environment** in the GUI.
+All environment configuration is stored in **`secrets/enviroment.json`** under the app data folder (in dev: `app/secrets/enviroment.json`). Edit it directly or use **Settings → Environment → Save environment** in the GUI.
 
 **Flutter project root** — absolute path to the Flutter project this app runs pipelines against (directory that contains `pubspec.yaml`). Set it in **Settings → Environment**; it is stored as **`FLUTTER_PROJECT_ROOT`**.
 
@@ -20,7 +20,7 @@ All environment configuration is stored in **`app/secrets/enviroment.json`** (gi
 | `GOOGLE_DRIVE_TOKEN_JSON` | Optional · default `gdrive_token.json` beside the client secret |
 | `GOOGLE_DRIVE_FOLDER_ID` | Optional Drive folder ID |
 | `GMAIL_USER` · `GMAIL_APP_PASSWORD` | Optional · Gmail for build reports & Drive link email |
-| `LOGS_DISTRIBUTION` · `DISTRIBUTION` | JSON arrays in **`app/secrets/enviroment.json`** · build-report vs Drive-link recipient lists |
+| `LOGS_DISTRIBUTION` · `DISTRIBUTION` | JSON arrays in **`secrets/enviroment.json`** · build-report vs Drive-link recipient lists |
 | `APP_STORE_ISSUER_ID` · `APP_STORE_API_KEY` | iOS upload (`altool`) |
 
 ---

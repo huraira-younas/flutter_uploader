@@ -23,9 +23,9 @@ from . import widgets as W
 _SECTION_MOUNTS: tuple[tuple[str, Callable[[ConfigPanelHost, ctk.CTkScrollableFrame, int], int]], ...] = (
     ("pre_git", pre_git.mount),
     ("common", common_section.mount),
-    ("post_git", post_git.mount),
     ("android", android_section.mount),
     ("ios", ios_section.mount),
+    ("post_git", post_git.mount),
     ("post_build", post_build_section.mount),
 )
 

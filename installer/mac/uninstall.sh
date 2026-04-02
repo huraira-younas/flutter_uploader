@@ -11,6 +11,7 @@ set -euo pipefail
 BUNDLE_ID="com.senpai.flutteruploader"
 APP_BUNDLE="FlutterUploader.app"
 APP_NAME="Flutter Uploader"
+APP_DATA_DIR="FlutterUploader"
 
 LOCATIONS=(
     "/Applications/${APP_BUNDLE}"
@@ -60,6 +61,7 @@ else
 fi
 
 LIBRARY_DIRS=(
+    "${HOME}/Library/Application Support/${APP_DATA_DIR}"
     "${HOME}/Library/Application Support/${APP_NAME}"
     "${HOME}/Library/Caches/${BUNDLE_ID}"
 )
