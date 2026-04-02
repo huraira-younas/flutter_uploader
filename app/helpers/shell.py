@@ -7,6 +7,7 @@ import subprocess
 import signal
 import shutil
 import os
+import sys
 
 from core.constants import IS_WIN, ORPHAN_PATTERNS
 from helpers.types import LogFn, StopCheckFn
@@ -19,6 +20,26 @@ _EOF = object()
 _CACHED_FLUTTER_BIN: str | None = None
 _PERSISTED_FLUTTER_BIN: bool = False
 _PATH_SEP = os.pathsep
+
+
+def _looks_utf8(raw: str) -> bool:
+    return "utf-8" in str(raw or "").lower() or "utf8" in str(raw or "").lower()
+
+
+def _ensure_utf8_locale(env: dict[str, str]) -> None:
+    """Force UTF-8 locale for tools like CocoaPods when launched from GUI."""
+    if os.name == "nt":
+        return
+    target = "en_US.UTF-8" if sys.platform == "darwin" else "C.UTF-8"
+    lang = env.get("LANG", "")
+    lc_all = env.get("LC_ALL", "")
+    lc_ctype = env.get("LC_CTYPE", "")
+    if not _looks_utf8(lang):
+        env["LANG"] = target
+    if not lc_all or not _looks_utf8(lc_all):
+        env["LC_ALL"] = target
+    if not _looks_utf8(lc_ctype):
+        env["LC_CTYPE"] = target
 
 
 def _normalize_path_seg(p: str) -> str:
@@ -165,6 +186,7 @@ def _build_subprocess_env() -> dict[str, str]:
         seen.add(seg)
         merged.append(seg)
     env["PATH"] = _PATH_SEP.join(merged)
+    _ensure_utf8_locale(env)
     return env
 
 
@@ -232,7 +254,9 @@ def _autodetect_flutter_bin(*, env: dict[str, str], cwd: Path) -> str | None:
     global _CACHED_FLUTTER_BIN
     if _CACHED_FLUTTER_BIN:
         p = Path(_CACHED_FLUTTER_BIN)
-        return _CACHED_FLUTTER_BIN if _is_flutter_invokable(p) else None
+        if _is_flutter_invokable(p):
+            return _CACHED_FLUTTER_BIN
+        _CACHED_FLUTTER_BIN = None
 
     path_var = env.get("PATH", "")
     found = shutil.which("flutter", path=path_var)
@@ -381,6 +405,10 @@ def run_cmd(
     if header:
         log(header)
 
+    if not cwd.exists():
+        log(f"\nError: working directory not found: {cwd}\n")
+        return False
+
     executable = cmd[0]
     env = _build_subprocess_env()
     resolved_executable = _resolve_tool_override(executable) or shutil.which(executable, path=env.get("PATH", ""))
@@ -397,17 +425,29 @@ def run_cmd(
             _persist_detected_flutter_bin(detected)
 
     if resolved_executable is None:
-        verify_hint = (
-            "You can verify in Command Prompt: `where flutter` then `flutter --version`.\n"
-            if IS_WIN
-            else "You can verify in Terminal: `which flutter` then `flutter --version`.\n"
-        )
-        log(
-            f"\nError: command not found: '{executable}'.\n"
-            "Make sure Flutter is installed and on PATH (or use a default install location).\n"
-            "Tip: Flutter Uploader auto-detects common installs; for custom locations set FLUTTER_BIN in Settings → Environment.\n"
-            + verify_hint
-        )
+        if executable == "flutter":
+            verify_hint = (
+                "You can verify in Command Prompt: `where flutter` then `flutter --version`.\n"
+                if IS_WIN
+                else "You can verify in Terminal: `which flutter` then `flutter --version`.\n"
+            )
+            log(
+                "\nError: command not found: 'flutter'.\n"
+                "Make sure Flutter is installed and on PATH (or use a default install location).\n"
+                "Tip: Flutter Uploader auto-detects common installs; for custom locations set FLUTTER_BIN in Settings → Environment.\n"
+                + verify_hint
+            )
+        else:
+            verify_hint = (
+                f"You can verify in Command Prompt: `where {executable}`.\n"
+                if IS_WIN
+                else f"You can verify in Terminal: `which {executable}`.\n"
+            )
+            log(
+                f"\nError: command not found: '{executable}'.\n"
+                "Make sure required build tools are installed and available on PATH.\n"
+                + verify_hint
+            )
         return False
 
     run_args = list(cmd)
@@ -429,6 +469,7 @@ def run_cmd(
             stdout=subprocess.PIPE,
             bufsize=1,
             text=True,
+            errors="replace",
             cwd=cwd,
             env=env,
             **_no_win,
