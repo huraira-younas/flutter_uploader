@@ -1,56 +1,52 @@
 {
-  "app_info": {
-    "theme": "one_dark",
-    "version": "1.0.22",
-    "build": "223"
-  },
+  "theme": "one_dark",
   "pre_git": {
-    "enabled": true,
-    "commit_message": "pre-release cleanup",
     "steps": {
       "git_commit_pre": true,
       "git_pull": true
-    }
+    },
+    "commit_message": "pre-release cleanup",
+    "enabled": true
   },
   "common": {
-    "enabled": true,
-    "pub_mode": "pub upgrade",
     "steps": {
       "clean": true,
       "pub_get": true
-    }
+    },
+    "pub_mode": "pub upgrade",
+    "enabled": true
   },
   "post_git": {
-    "enabled": true,
-    "commit_message": "v{version} ({build})",
     "steps": {
       "git_commit_rel": true,
       "git_push": true
-    }
+    },
+    "commit_message": "v{version} ({build})",
+    "enabled": true
   },
   "android": {
-    "enabled": true,
     "steps": {
       "build_apk": true,
       "build_aab": true
-    }
+    },
+    "enabled": true
   },
   "ios": {
-    "enabled": true,
     "steps": {
       "pod_update": true,
       "build_ipa": true,
       "appstore_upload": true
-    }
+    },
+    "enabled": true
   },
   "post_build": {
-    "enabled": true,
-    "power_mode": "Sleep",
-    "quit_after_power": true,
     "steps": {
       "open_folders": false,
       "drive_upload": true,
       "shutdown": false
-    }
+    },
+    "power_mode": "Sleep",
+    "quit_after_power": true,
+    "enabled": true
   }
 }

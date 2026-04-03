@@ -41,11 +41,11 @@ ENVIRONMENT_JSON_PATH: Path = SECRETS_DIR / "enviroment.json"
 # Top-level keys in ``config.json`` / ``default_app_config()``.
 CONFIG_SECTION_KEYS: tuple[str, ...] = (
     "post_build",
-    "app_info",
     "post_git",
     "android",
     "pre_git",
     "common",
+    "theme",
     "env",
     "ios",
 )
@@ -67,11 +67,7 @@ def deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]
 def default_app_config() -> dict[str, Any]:
     """Code defaults; user file overlays this."""
     return {
-        "app_info": {
-            "theme": "catppuccin_mocha",
-            "version": "",
-            "build": "",
-        },
+        "theme": "catppuccin_mocha",
         "env": {
             "GOOGLE_DRIVE_CREDENTIALS_JSON": "",
             "GOOGLE_DRIVE_TOKEN_JSON": "",
@@ -86,33 +82,33 @@ def default_app_config() -> dict[str, Any]:
             "GMAIL_USER": "",
         },
         "pre_git": {
-            "enabled": True,
-            "commit_message": DEFAULT_COMMIT_MESSAGE_PRE,
             "steps": {"git_commit_pre": True, "git_pull": True},
+            "commit_message": DEFAULT_COMMIT_MESSAGE_PRE,
+            "enabled": True,
         },
         "common": {
-            "enabled": True,
-            "pub_mode": "pub get",
             "steps": {"clean": False, "pub_get": False},
+            "pub_mode": "pub get",
+            "enabled": True,
         },
         "post_git": {
-            "enabled": True,
-            "commit_message": DEFAULT_COMMIT_MESSAGE_RELEASE,
             "steps": {"git_commit_rel": True, "git_push": True},
+            "commit_message": DEFAULT_COMMIT_MESSAGE_RELEASE,
+            "enabled": True,
         },
         "android": {
-            "enabled": True,
             "steps": {"build_apk": True, "build_aab": False},
+            "enabled": True,
         },
         "ios": {
-            "enabled": True,
             "steps": {"pod_update": False, "build_ipa": True, "appstore_upload": True},
+            "enabled": True,
         },
         "post_build": {
-            "enabled": True,
+            "steps": {"open_folders": False, "drive_upload": True, "shutdown": False},
             "power_mode": "Sleep" if sys.platform == "darwin" else "Shutdown",
             "quit_after_power": False,
-            "steps": {"open_folders": False, "drive_upload": True, "shutdown": False},
+            "enabled": True,
         },
     }
 
@@ -132,31 +128,21 @@ def parse_recipients(items: list[str]) -> list[str]:
     return out
 
 
-def _load_environment_json_file() -> dict[str, Any]:
-    """Parse ``secrets/enviroment.json``; missing or invalid file → ``{}``."""
-    if not ENVIRONMENT_JSON_PATH.is_file():
+def _load_json_object_file(path: Path) -> dict[str, Any]:
+    """Read a JSON object from *path*; missing file, invalid JSON, or non-object root → ``{}``."""
+    if not path.is_file():
         return {}
     try:
-        raw = ENVIRONMENT_JSON_PATH.read_text(encoding="utf-8")
+        raw = path.read_text(encoding="utf-8")
         data = json.loads(raw) if raw.strip() else {}
     except (OSError, json.JSONDecodeError):
         return {}
     return data if isinstance(data, dict) else {}
 
-
 def _read_merged_from_disk() -> dict[str, Any]:
     base = default_app_config()
-    saved: dict[str, Any] = {}
-    if CONFIG_PATH.is_file():
-        try:
-            raw = CONFIG_PATH.read_text(encoding="utf-8")
-            saved = json.loads(raw) if raw.strip() else {}
-        except (OSError, json.JSONDecodeError):
-            saved = {}
-    if not isinstance(saved, dict):
-        saved = {}
-    merged = deep_merge(base, saved)
-    file_env = _load_environment_json_file()
+    merged = deep_merge(base, _load_json_object_file(CONFIG_PATH))
+    file_env = _load_json_object_file(ENVIRONMENT_JSON_PATH)
     merged["env"] = deep_merge(merged.get("env") or {}, file_env)
     return merged
 

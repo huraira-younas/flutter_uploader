@@ -144,7 +144,7 @@ The installed app stores configuration in per-user app-data directories:
 
 | File | Purpose |
 |:---|:---|
-| `%APPDATA%\FlutterUploader\config.json` *(Windows)* / `~/Library/Application Support/FlutterUploader/config.json` *(macOS)* | Section toggles, version, theme, commit messages |
+| `%APPDATA%\FlutterUploader\config.json` *(Windows)* / `~/Library/Application Support/FlutterUploader/config.json` *(macOS)* | Section toggles, theme, commit messages |
 | `%APPDATA%\FlutterUploader\secrets/enviroment.json` *(Windows)* / `~/Library/Application Support/FlutterUploader/secrets/enviroment.json` *(macOS)* | Flutter project root, Drive/Gmail credentials, recipient lists |
 | `%APPDATA%\FlutterUploader\logs` / `~/Library/Application Support/FlutterUploader/logs` | Build log files |
 | `%APPDATA%\FlutterUploader\outputs` / `~/Library/Application Support/FlutterUploader/outputs` | Copied build artifacts (APK/IPA) |

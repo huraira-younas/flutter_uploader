@@ -73,7 +73,7 @@ Values are saved to **`config.json`** and **`secrets/enviroment.json`**, applied
 
 ### Theme
 
-**Settings → Theme** — pick a preset and **Apply** (app restarts). Saved under `app_info.theme` in `config.json`.
+**Settings → Theme** — pick a preset and **Apply** (app restarts). Saved as the top-level `theme` key in `config.json`.
 
 | Theme | Style |
 |:---|:---|

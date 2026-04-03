@@ -32,20 +32,12 @@ def _display_name(name: str) -> str:
 
 def load_saved_theme() -> str | None:
     """Return the saved theme name from config, or ``None``."""
-    try:
-        theme = get_section("app_info").get("theme")
-    except Exception:
-        return None
+    theme = get_app_config().get("theme")
     return theme if isinstance(theme, str) and theme.strip() else None
 
 
 def _save_theme(name: str) -> None:
-    save_config(
-        {
-            **get_app_config(),
-            "app_info": {**get_section("app_info"), "theme": name},
-        }
-    )
+    save_config({**get_app_config(), "theme": name})
 
 
 class SettingsPanel(ctk.CTkFrame):

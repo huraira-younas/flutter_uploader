@@ -4,7 +4,7 @@ All environment configuration is stored in **`secrets/enviroment.json`** under t
 
 **Flutter project root** — absolute path to the Flutter project this app runs pipelines against (directory that contains `pubspec.yaml`). Set it in **Settings → Environment**; it is stored as **`FLUTTER_PROJECT_ROOT`**.
 
-**Theme** — the selected GUI theme is saved in `config.json` under `app_info.theme`.
+**Theme** — the selected GUI theme is saved in `config.json` at the top-level key `theme`.
 
 **Read Me → Environment** in the GUI · [`README.md`](README.md)
 
