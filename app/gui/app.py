@@ -11,16 +11,16 @@ import queue
 import time
 import sys
 
-from helpers.platform_utils import is_macos
 from helpers.shell import terminate_active_processes
+from helpers.platform_utils import is_macos
 from helpers.types import fmt_elapsed
 
-from gui.console import ConsolePanel
-from gui.pipeline_runner import PipelineRunner
 from gui.sections import persist_gui_config, mount_config_panel
-from gui.settings import load_saved_theme, SettingsPanel
-from gui.theme import COLORS, PAD, RADIUS
 from gui.widgets import segmented_button, scrollable_frame
+from gui.settings import load_saved_theme, SettingsPanel
+from gui.pipeline_runner import PipelineRunner
+from gui.theme import COLORS, PAD, RADIUS
+from gui.console import ConsolePanel
 
 from core.bootstrap import ensure_dependencies
 from core.config_store import (
@@ -29,6 +29,7 @@ from core.config_store import (
     reload_app_config,
     init_app_config,
 )
+
 from core.constants import APP_TITLE, APP_VERSION
 from core.pipeline_config import (
     build_pipeline_config,
@@ -38,7 +39,6 @@ from core.pipeline_config import (
 )
 from core.prerequisites import flutter_project_prereq_status
 from core.steps import StepDef
-
 import customtkinter as ctk
 
 
