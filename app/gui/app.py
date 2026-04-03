@@ -17,7 +17,6 @@ from helpers.types import fmt_elapsed
 
 from gui.console import ConsolePanel
 from gui.pipeline_runner import PipelineRunner
-from gui.readme import ReadMePanel
 from gui.sections import persist_gui_config, mount_config_panel
 from gui.settings import load_saved_theme, SettingsPanel
 from gui.theme import COLORS, PAD, RADIUS
@@ -121,29 +120,22 @@ class BuildApp(ctk.CTk):
         self._lockable_widgets: list = []
 
         # Populated by section mounts (see ``gui/sections/``).
-        self.version_var: ctk.StringVar | None = None
-        self.build_var: ctk.StringVar | None = None
-        self.recipients_var: ctk.StringVar | None = None
-        self._commit_msg_pre: ctk.StringVar | None = None
         self._commit_msg_release: ctk.StringVar | None = None
-        self._pub_mode: ctk.StringVar | None = None
-        self._power_mode: ctk.StringVar | None = None
         self._quit_after_power: ctk.BooleanVar | None = None
+        self._commit_msg_pre: ctk.StringVar | None = None
+        self.recipients_var: ctk.StringVar | None = None
+        self.version_var: ctk.StringVar | None = None
+        self._power_mode: ctk.StringVar | None = None
+        self._pub_mode: ctk.StringVar | None = None
+        self.build_var: ctk.StringVar | None = None
 
         self._fonts = {
             "mono_sm": ctk.CTkFont(family="Consolas", size=12),
-            "readme_h1": ctk.CTkFont(size=22, weight="bold"),
-            "readme_h2": ctk.CTkFont(size=15, weight="bold"),
-            "readme_h3": ctk.CTkFont(size=13, weight="bold"),
             "mono": ctk.CTkFont(family="Consolas", size=13),
-            "inline_code": ctk.CTkFont(family="Consolas", size=12),
             "status": ctk.CTkFont(size=12, slant="italic"),
             "section": ctk.CTkFont(size=14, weight="bold"),
             "title": ctk.CTkFont(size=26, weight="bold"),
             "btn": ctk.CTkFont(size=14, weight="bold"),
-            "body_bold": ctk.CTkFont(size=13, weight="bold"),
-            "body_italic": ctk.CTkFont(size=13, slant="italic"),
-            "body_bold_italic": ctk.CTkFont(size=13, weight="bold", slant="italic"),
             "body_sm": ctk.CTkFont(size=12),
             "footer": ctk.CTkFont(size=11),
             "body": ctk.CTkFont(size=13),
@@ -226,7 +218,7 @@ class BuildApp(ctk.CTk):
         tab_bar.grid(row=1, column=0, sticky="ew", padx=PAD["lg"])
 
         self._tab_selector = segmented_button(
-            tab_bar, values=["Config", "Console", "ReadMe", "Settings"],
+            tab_bar, values=["Config", "Console", "Settings"],
             command=self._switch_tab, font=self._fonts["body_sm"],
         )
         self._tab_selector.set("Config")
@@ -238,7 +230,7 @@ class BuildApp(ctk.CTk):
         content.grid_rowconfigure(0, weight=1)
 
         self._tab_frames: dict[str, ctk.CTkFrame] = {}
-        for tab_name in ("Config", "Console", "ReadMe", "Settings"):
+        for tab_name in ("Config", "Console", "Settings"):
             frame = ctk.CTkFrame(content, fg_color="transparent")
             frame.grid(row=0, column=0, sticky="nsew")
             frame.grid_columnconfigure(0, weight=1)
@@ -247,7 +239,6 @@ class BuildApp(ctk.CTk):
 
         self._settings_frame = self._tab_frames["Settings"]
         self._console_frame = self._tab_frames["Console"]
-        self._readme_frame = self._tab_frames["ReadMe"]
         self._config_frame = self._tab_frames["Config"]
 
         self.config_scroll = scrollable_frame(
@@ -258,9 +249,6 @@ class BuildApp(ctk.CTk):
 
         self._console = ConsolePanel(self._console_frame, self._fonts)
         self._console.grid(row=0, column=0, sticky="nsew")
-
-        self._readme = ReadMePanel(self._readme_frame, self._fonts)
-        self._readme.grid(row=0, column=0, sticky="nsew")
 
         self._settings = SettingsPanel(self._settings_frame, self._fonts, app=self)
         self._settings.grid(row=0, column=0, sticky="nsew")

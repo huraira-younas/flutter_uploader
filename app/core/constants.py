@@ -101,9 +101,6 @@ def aab_dir() -> Path:
 def ipa_dir() -> Path:
     return require_flutter_project_root() / "build" / "ios" / "ipa"
 
-CLI_REFERENCE_PATH = BUNDLE_DIR / "CLI_REFERENCE.md"
-ENVIRONMENT_PATH = BUNDLE_DIR / "ENVIRONMENT.md"
-README_PATH = BUNDLE_DIR / "README.md"
 
 def pubspec_path() -> Path:
     return require_flutter_project_root() / "pubspec.yaml"

@@ -6,7 +6,7 @@ All environment configuration is stored in **`secrets/enviroment.json`** under t
 
 **Theme** — the selected GUI theme is saved in `config.json` at the top-level key `theme`.
 
-**Read Me → Environment** in the GUI · [`README.md`](README.md)
+See also [`README.md`](README.md).
 
 ---
 

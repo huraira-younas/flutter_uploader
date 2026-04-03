@@ -15,13 +15,10 @@ IS_DARWIN = sys.platform == "darwin"
 
 block_cipher = None
 
-# Bundled for _MEIPASS / onedir; build_win.ps1 / build_mac.sh also copy these next to the
+# Bundled for _MEIPASS / onedir; build_win.ps1 / build_mac.sh also copy docs next to the
 # built binaries because frozen UPLOADER_DIR is the exe directory, not the bundle.
 datas = [
-    (str(ROOT / "README.md"), "."),
     (str(ROOT / "app" / "config.json"), "."),
-    (str(ROOT / "app" / "ENVIRONMENT.md"), "."),
-    (str(ROOT / "app" / "CLI_REFERENCE.md"), "."),
 ]
 
 hiddenimports = []

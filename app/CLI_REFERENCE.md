@@ -1,6 +1,6 @@
 # CLI reference
 
-Run **`python3 run.py`** from this repository. Same content under **Read Me → CLI** in the app.
+Run **`python3 run.py`** from this repository.
 
 Headless runs need **`--cli`** (otherwise the GUI opens and run flags are ignored). **`--list-steps`** and **`--no-install`** work without `--cli`.
 

@@ -4,7 +4,6 @@
 
 | Resource | Where |
 |:---|:---|
-| **Read Me (app)** | Tabs: **README** · **CLI** · **Environment** |
 | **CLI** | [`CLI_REFERENCE.md`](CLI_REFERENCE.md) |
 | **Secrets & setup** | [`ENVIRONMENT.md`](ENVIRONMENT.md) · `secrets/enviroment.json` |
 | **GUI settings** | **Settings** tab: **Environment** (paths, Drive, Gmail, recipients) + **Theme** |
@@ -133,4 +132,4 @@ If Gmail is not set, logs are still written locally.
 
 ## CLI
 
-[`CLI_REFERENCE.md`](CLI_REFERENCE.md) · **Read Me → CLI** in the app. Use **`--cli`** for headless.
+See [`CLI_REFERENCE.md`](CLI_REFERENCE.md). Use **`--cli`** for headless.
