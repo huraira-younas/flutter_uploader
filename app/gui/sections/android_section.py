@@ -19,9 +19,9 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
     off = 0
     c = W.build_card(scroll, row)
     W.build_section_header(
-        c, title="Android Build", fonts=app._fonts,
-        section_key="android", app=app,
-        header_row=off,
+        c, title="Android", 
+        subtitle="Configure Android compilation for APK and App Bundle formats.",
+        fonts=app._fonts, section_key="android", app=app, header_row=off,
     )
     W.build_step_rows_from_defs(
         c, app=app, section_key="android", steps=list(ANDROID_STEPS),

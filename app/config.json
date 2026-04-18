@@ -1,5 +1,5 @@
 {
-  "theme": "one_dark",
+  "theme": "nord",
   "git_branch": "master",
   "pre_git": {
     "steps": {

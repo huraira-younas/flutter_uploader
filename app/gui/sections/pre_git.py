@@ -24,8 +24,9 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
     off = 0
     c = W.build_card(scroll, row)
     W.build_section_header(
-        c, title="Pre-Git", fonts=app._fonts,
-        section_key="git_pre", app=app, header_row=off,
+        c, title="Pre-Git", 
+        subtitle="Initial repository state management, cleanup, and pre-release synchronization.",
+        fonts=app._fonts, section_key="git_pre", app=app, header_row=off,
     )
     W.build_commit_message_row(
         c, row=1 + off, label_text="Commit message:", section_key="git_pre", msg_var=app._commit_msg_pre,

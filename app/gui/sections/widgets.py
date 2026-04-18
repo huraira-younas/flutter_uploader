@@ -38,7 +38,7 @@ def build_prereq_banner(
         text=message,
         font=fonts["body_sm"],
         text_color=color,
-        wraplength=720,
+        wraplength=550,
         justify="left",
         anchor="w",
     ).grid(row=row, column=0, columnspan=2, sticky="ew", padx=PAD["lg"], pady=(PAD["md"], PAD["sm"]))
@@ -53,6 +53,7 @@ def build_section_header(
     parent: ctk.CTkFrame,
     *,
     title: str,
+    subtitle: str | None = None,
     fonts: dict[str, ctk.CTkFont],
     section_key: str,
     app: ConfigPanelHost,
@@ -64,7 +65,21 @@ def build_section_header(
         padx=PAD["lg"], pady=(PAD["md"], PAD["sm"]),
     )
     header.grid_columnconfigure(0, weight=1)
-    section_label(header, title, fonts["section"]).grid(row=0, column=0, sticky="w")
+    
+    title_frame = ctk.CTkFrame(header, fg_color="transparent")
+    title_frame.grid(row=0, column=0, sticky="w")
+    
+    section_label(title_frame, title, fonts["section"]).grid(row=0, column=0, sticky="w")
+    
+    if subtitle:
+        ctk.CTkLabel(
+            title_frame,
+            text=subtitle,
+            font=fonts["body_sm"],
+            text_color=COLORS["text_dim"],
+            wraplength=550,
+            justify="left",
+        ).grid(row=1, column=0, sticky="w")
 
     col = 1
     enabled_var = app.section_enabled_vars.get(section_key)

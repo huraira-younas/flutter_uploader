@@ -28,8 +28,16 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
             r += 1
 
     section_label(frame, "Distribution", app._fonts["section"]).grid(
-        row=r, column=0, sticky="w", padx=PAD["lg"], pady=(PAD["md"], 5),
+        row=r, column=0, sticky="w", padx=PAD["lg"], pady=(PAD["md"], 0),
     )
+    r += 1
+    ctk.CTkLabel(
+        frame,
+        text="Configure email recipients for the build reports and Drive links.",
+        font=app._fonts["body_sm"],
+        text_color=COLORS["text_dim"],
+        justify="left",
+    ).grid(row=r, column=0, sticky="w", padx=PAD["lg"], pady=(0, PAD["sm"]))
     r += 1
     ctk.CTkLabel(
         frame, text="Preset Recipient Emails:",

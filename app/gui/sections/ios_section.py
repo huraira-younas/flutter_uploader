@@ -35,9 +35,9 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
         off += 1
         app._steps_disabled_by_prereq.add("appstore_upload")
     W.build_section_header(
-        c, title="iOS Build", fonts=app._fonts,
-        section_key="ios", app=app,
-        header_row=off,
+        c, title="iOS", 
+        subtitle="Manage CocoaPods, build IPA archives, and coordinate App Store uploads.",
+        fonts=app._fonts, section_key="ios", app=app, header_row=off,
     )
     W.build_step_rows_from_defs(
         c, app=app, section_key="ios", steps=list(IOS_STEPS),

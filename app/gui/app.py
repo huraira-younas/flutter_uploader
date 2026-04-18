@@ -70,8 +70,8 @@ class BuildApp(ctk.CTk):
         self.title(f"{APP_TITLE} v{APP_VERSION}")
         self._show_ios = is_macos()
 
-        self.geometry(f"940x{1080 if self._show_ios else 920}")
-        self.minsize(780, 750)
+        self.resizable(False, True)
+        self.minsize(700, 750)
 
         self.ui_queue: queue.Queue = queue.Queue()
         self._stop_requested = False

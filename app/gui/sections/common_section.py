@@ -26,8 +26,9 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
     off = 0
     c = W.build_card(scroll, row)
     W.build_section_header(
-        c, title="Common", fonts=app._fonts,
-        section_key="common", app=app, header_row=off,
+        c, title="Common", 
+        subtitle="Core maintenance tasks like cache cleaning and dependency resolution.",
+        fonts=app._fonts, section_key="common", app=app, header_row=off,
     )
 
     n = len(COMMON_STEPS)

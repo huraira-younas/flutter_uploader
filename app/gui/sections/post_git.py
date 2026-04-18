@@ -24,8 +24,9 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
     off = 0
     c = W.build_card(scroll, row)
     W.build_section_header(
-        c, title="Post-Git", fonts=app._fonts,
-        section_key="git_post", app=app, header_row=off,
+        c, title="Post-Git", 
+        subtitle="Finalize the release with version tagging and remote synchronization.",
+        fonts=app._fonts, section_key="git_post", app=app, header_row=off,
     )
     
     W.build_commit_message_row(

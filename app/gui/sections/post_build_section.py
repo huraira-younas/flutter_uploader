@@ -43,8 +43,9 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
         off += 1
         app._steps_disabled_by_prereq.add("drive_upload")
     W.build_section_header(
-        c, title="Post-Build", fonts=app._fonts,
-        section_key="post", app=app, header_row=off,
+        c, title="Post Build", 
+        subtitle="Automation for distribution, cloud uploads, and system power management.",
+        fonts=app._fonts, section_key="post", app=app, header_row=off,
     )
     W.build_step_rows_from_defs(
         c, app=app, section_key="post", steps=list(POST_STEPS),
