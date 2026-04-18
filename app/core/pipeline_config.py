@@ -11,23 +11,25 @@ from core.constants import (
     DEFAULT_GIT_BRANCH,
 )
 from core.steps import (
+    DISTRIBUTION_STEPS,
     COMMIT_PRE_STEPS,
+    GIT_POST_STEPS,
     ANDROID_STEPS,
     COMMON_STEPS,
-    GIT_POST_STEPS,
     POST_STEPS,
     IOS_STEPS,
     StepDef,
 )
 
 
-# Execution order: pre-git (commit + pull) → common → Android/iOS → post-git (release commit + push) → post-build.
+# Execution order: pre-git → common → Android/iOS → post-git → distribution (uploads) → post-build.
 _SECTION_DEFS: tuple[tuple[str, list[StepDef]], ...] = (
     ("git_pre", COMMIT_PRE_STEPS),
     ("common", COMMON_STEPS),
     ("android", ANDROID_STEPS),
     ("ios", IOS_STEPS),
     ("git_post", GIT_POST_STEPS),
+    ("distribution", DISTRIBUTION_STEPS),
     ("post", POST_STEPS),
 )
 
@@ -53,6 +55,7 @@ class RunSelectedArgs(TypedDict):
     git_branch: str
     version: str
     build: str
+    google_play_track: str
 
 
 def _section_flags(cfg: PipelineConfig, *, ios_resolved: bool) -> dict[str, bool]:
@@ -64,11 +67,12 @@ def _section_flags(cfg: PipelineConfig, *, ios_resolved: bool) -> dict[str, bool
         "git_post": cfg.git_post_enabled,
         "android": cfg.android_enabled,
         "ios": ios_resolved,
+        "distribution": cfg.distribution_enabled,
         "post": cfg.post_enabled,
     }
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class PipelineConfig:
     commit_message_release: str = DEFAULT_COMMIT_MESSAGE_RELEASE
     commit_message_pre: str = DEFAULT_COMMIT_MESSAGE_PRE
@@ -81,6 +85,7 @@ class PipelineConfig:
     enabled_steps: frozenset[str] | None = None
     recipients: str | None = None
 
+    distribution_enabled: bool = True
     git_post_enabled: bool = True
     git_pre_enabled: bool = True
     android_enabled: bool = True
@@ -88,10 +93,12 @@ class PipelineConfig:
     pub_upgrade: bool = False
     post_enabled: bool = True
     ios_enabled: bool = True
+    google_play_track: str = "production"
 
     def run_kwargs(self) -> RunSelectedArgs:
         return {
             "commit_message_release": self.commit_message_release,
+            "google_play_track": self.google_play_track,
             "quit_after_power": self.quit_after_power,
             "commit_message": self.commit_message_pre,
             "drive_email_link_to": self.recipients,
@@ -154,6 +161,7 @@ def build_pipeline_config(
     recipients: str | None = None,
     version: str = "1.0.0",
     build: str = "1",
+    google_play_track: str = "production",
     git_branch: str | None = None,
 ) -> PipelineConfig:
     return PipelineConfig(
@@ -172,6 +180,7 @@ def build_pipeline_config(
         recipients=recipients,
         version=version,
         build=build,
+        google_play_track=google_play_track,
         git_branch=(git_branch or "").strip() or DEFAULT_GIT_BRANCH,
     )
 

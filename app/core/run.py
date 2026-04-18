@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Callable
 import shutil
 import os
@@ -11,6 +12,9 @@ from helpers.rename_artifacts import (
     copy_ipas_to_outputs,
     clear_outputs,
 )
+
+from helpers.google_play_upload import run_google_play_upload as lib_google_play_upload
+from helpers.android_utils import extract_package_name
 
 from helpers.shell import CommandRunner
 from core.config_store import env_value
@@ -172,7 +176,7 @@ def run_appstore_upload(
     stop_check: StopCheckFn | None = None,
     log: LogFn = _log_noop,
 ) -> bool:
-    """Upload the first IPA found to App Store Connect via xcrun altool."""
+    """Upload the first IPA found to AppStore Connect via xcrun altool."""
     issuer_id = env_value("APP_STORE_ISSUER_ID")
     api_key = env_value("APP_STORE_API_KEY")
     if (
@@ -181,7 +185,7 @@ def run_appstore_upload(
         or issuer_id.startswith("YOUR_")
         or api_key.startswith("YOUR_")
     ):
-        log("App Store Connect credentials not configured. Skipping upload.\n")
+        log("AppStore Connect credentials not configured. Skipping upload.\n")
         return True
 
     ipa_files = sorted(ipa_dir().glob("*.ipa"))
@@ -198,17 +202,47 @@ def run_appstore_upload(
             "--apiIssuer", issuer_id,
         ],
         log,
-        header=f"\n>> Uploading {ipa_path.name} to App Store Connect\n",
+        header=f"\n>> Uploading {ipa_path.name} to AppStore Connect\n",
         stop_check=stop_check,
     )
 
 
-def run_drive_upload(
-    recipients: str | None, version: str, build: str, log: LogFn,
+def run_google_play_upload(
+    version: str,
+    build: str,
+    track: str = "production",
+    log: LogFn = _log_noop,
     stop_check: StopCheckFn | None = None,
 ) -> bool:
-    return upload_outputs_to_drive(
-        recipients, log, version=version, build=build, stop_check=stop_check,
+    """Auto-detect package name and upload AAB to Google Play."""
+    project_root = flutter_project_root()
+    packageName = extract_package_name(project_root)
+    if not packageName:
+        log("Google Play: Could not auto-detect Package Name from build.gradle. Skipping.\n")
+        return False
+    
+    json_key_path_str = env_value("GOOGLE_PLAY_JSON_KEY")
+    if not json_key_path_str:
+        log("Google Play: GOOGLE_PLAY_JSON_KEY not set in Environment. Skipping.\n")
+        return True
+    
+    # Use helper's path resolver if needed, or just standard path
+    from helpers.drive_upload import _resolve_env_path
+    json_key_path = _resolve_env_path(json_key_path_str)
+    
+    aab_files = sorted(aab_dir().glob("*.aab"))
+    if not aab_files:
+        log("Google Play: No AAB files found to upload.\n")
+        return False
+    
+    aab_path = aab_files[0]
+    return lib_google_play_upload(
+        aab_path=aab_path,
+        packageName=packageName,
+        json_key_path=json_key_path,
+        track=track,
+        log=log,
+        stop_check=stop_check,
     )
 
 
@@ -229,6 +263,7 @@ def _build_runners(
     pub_upgrade: bool = False,
     power_mode: str = "Shutdown",
     git_branch: str = "master",
+    google_play_track: str = "production",
 ) -> dict[str, Callable[[LogFn], bool]]:
     """Build step_key -> runner function mapping."""
     def with_stop(fn: Callable) -> Callable[[LogFn], bool]:
@@ -266,7 +301,7 @@ def _build_runners(
     release_msg = format_release_commit_message(commit_message_release, version, build)
 
     return {
-        "drive_upload":    lambda l: run_drive_upload(recipients, version, build, l, stop_check=stop_check),
+        "drive_upload":    lambda l: upload_outputs_to_drive(recipients, l, version=version, build=build, stop_check=stop_check),
         "git_push":        lambda l: run_git_push(git_branch, log=l, stop_check=stop_check),
         "git_pull":        lambda l: run_git_pull(git_branch, log=l, stop_check=stop_check),
         "git_commit_rel":  lambda l: run_git_commit_release(release_msg, l),
@@ -282,6 +317,9 @@ def _build_runners(
         "build_apk":       _build_apk_and_collect,
         "build_ipa":       _build_ipa_and_collect,
         "appstore_upload": _appstore_runner,
+        "google_play_upload": lambda l: run_google_play_upload(
+            version=version, build=build, track=google_play_track, log=l, stop_check=stop_check,
+        ),
     }
 
 
@@ -301,6 +339,7 @@ def run_selected(
     pub_upgrade: bool = False,
     power_mode: str = "Shutdown",
     git_branch: str = "master",
+    google_play_track: str = "production",
     quit_after_power: bool = False,
     schedule_quit_after_seconds: Callable[[float], None] | None = None,
 ) -> bool:
@@ -320,6 +359,7 @@ def run_selected(
         version=version,
         build=build,
         git_branch=git_branch,
+        google_play_track=google_play_track,
     )
 
     shutdown_step_ok = False

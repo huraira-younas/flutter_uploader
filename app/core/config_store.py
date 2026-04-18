@@ -25,6 +25,7 @@ from core.constants import (
 
 # Canonical mapping between pipeline section aliases and persisted config keys.
 PIPELINE_SECTION_TO_CONFIG_SECTION: dict[str, str] = {
+    "distribution": "distribution",
     "git_post": "post_git",
     "android": "android",
     "git_pre": "pre_git",
@@ -40,6 +41,7 @@ ENVIRONMENT_JSON_PATH: Path = SECRETS_DIR / "enviroment.json"
 
 # Top-level keys in ``config.json`` / ``default_app_config()``.
 CONFIG_SECTION_KEYS: tuple[str, ...] = (
+    "distribution",
     "git_branch",
     "post_build",
     "post_git",
@@ -103,11 +105,16 @@ def default_app_config() -> dict[str, Any]:
             "enabled": True,
         },
         "ios": {
-            "steps": {"pod_update": False, "build_ipa": True, "appstore_upload": True},
+            "steps": {"pod_update": False, "build_ipa": True},
+            "enabled": True,
+        },
+        "distribution": {
+            "steps": {"google_play_upload": False, "appstore_upload": False, "drive_upload": True},
+            "google_play_track": "production",
             "enabled": True,
         },
         "post_build": {
-            "steps": {"open_folders": False, "drive_upload": True, "shutdown": False},
+            "steps": {"open_folders": False, "shutdown": False},
             "power_mode": "Sleep" if sys.platform == "darwin" else "Shutdown",
             "quit_after_power": False,
             "enabled": True,

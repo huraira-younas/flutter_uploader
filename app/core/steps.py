@@ -18,7 +18,12 @@ ANDROID_STEPS: list[StepDef] = [
 IOS_STEPS: list[StepDef] = [
     ("pod_update", "Pod Update", "Deintegrate + repo update + update", False),
     ("build_ipa", "Build IPA", "Release archive", True),
-    ("appstore_upload", "App Store Upload", "Upload to App Store Connect", True),
+]
+
+DISTRIBUTION_STEPS: list[StepDef] = [
+    ("google_play_upload", "PlayStore Upload", "Upload AAB", True),
+    ("appstore_upload", "AppStore Upload", "Upload IPA", True),
+    ("drive_upload", "Upload to Drive", "Upload outputs + email link", True),
 ]
 
 
@@ -34,6 +39,5 @@ GIT_POST_STEPS: list[StepDef] = [
 
 POST_STEPS: list[StepDef] = [
     ("open_folders", "Open Outputs", "Open outputs folder", False),
-    ("drive_upload", "Upload to Drive", "Upload outputs + email link", True),
-    ("shutdown", "Power Off/Sleep", "Shutdown or sleep when done", False),
+    ("shutdown", "Power", "Shutdown or sleep", False),
 ]

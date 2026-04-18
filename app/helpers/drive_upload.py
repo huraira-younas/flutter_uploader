@@ -1,15 +1,17 @@
+from __future__ import annotations
 """Upload ``outputs/`` to Google Drive (OAuth user credentials)."""
 
 from pathlib import Path
 
 from core.constants import (
     DRIVE_SCOPES,
-    MIME_MAP,
-    OUTPUTS_DIR,
     UPLOADER_DIR,
+    OUTPUTS_DIR,
     FOLDER_MIME,
     LINK_PREFIX,
+    MIME_MAP,
 )
+
 from core.config_store import distribution_recipients_from_config, env_value
 from helpers.types import LogFn, StopCheckFn
 

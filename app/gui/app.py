@@ -43,7 +43,7 @@ import customtkinter as ctk
 
 
 PIPELINE_SECTION_KEYS: tuple[str, ...] = (
-    "git_pre", "common", "git_post", "android", "ios", "post",
+    "git_pre", "common", "git_post", "android", "ios", "distribution", "post",
 )
 
 
@@ -104,6 +104,7 @@ class BuildApp(ctk.CTk):
             "git_post": [],
             "android": [],
             "ios": [],
+            "distribution": [],
             "post": [],
         }
 

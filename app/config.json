@@ -1,5 +1,5 @@
 {
-  "theme": "nord",
+  "theme": "one_dark",
   "git_branch": "master",
   "pre_git": {
     "steps": {
@@ -40,11 +40,20 @@
     },
     "enabled": true
   },
+  "distribution": {
+    "steps": {
+      "google_play_upload": false,
+      "appstore_upload": false,
+      "drive_upload": true
+    },
+    "google_play_track": "production",
+    "enabled": true
+  },
   "post_build": {
     "steps": {
       "open_folders": false,
-      "drive_upload": true,
-      "shutdown": false
+      "shutdown": false,
+      "drive_upload": true
     },
     "power_mode": "Sleep",
     "quit_after_power": true,

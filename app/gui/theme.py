@@ -21,7 +21,7 @@ ctk.set_appearance_mode("Dark")
 
 # ── Theme dataclass ───────────────────────────────────────────────────────────
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class Theme:
     name: str
     colors: dict[str, str]

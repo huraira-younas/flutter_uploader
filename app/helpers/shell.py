@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Run shell commands and stream output to a log callback."""
 
 from threading import Lock, Thread

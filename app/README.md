@@ -43,9 +43,10 @@ python3 run.py          # GUI — Windows: python run.py
 | **Common** | Flutter Clean · Dependencies (`pub get` / `pub upgrade`) |
 | **Git (pre)** | Pre-release commit · Pull `master` |
 | **Android** | Build APK (release, split-per-abi) |
-| **iOS** *(Mac)* | Pod install · Build IPA · App Store upload (`xcrun altool`) |
+| **iOS** *(Mac)* | Pod install · Build IPA |
 | **Git (post)** | Release commit · Push `master` |
-| **Post-build** | Open `outputs/` · Drive upload + email · Shutdown / sleep |
+| **Distribution** | Play Store upload · App Store upload · Drive upload |
+| **Post-build** | Open `outputs/` · Shutdown / sleep |
 
 Artifacts are copied into **`outputs/`** (next to the app); the Flutter project's `build/` trees are left as-is.
 
@@ -96,8 +97,16 @@ Values are saved to **`config.json`** and **`secrets/enviroment.json`**, applied
 
 ## App Store Connect *(Mac)*
 
-- IPA upload via **`xcrun altool`**.
+- IPA upload via **`xcrun altool`** (now managed in the **Distribution** section).
 - API key **`.p8`** in `~/private_keys/` plus `APP_STORE_ISSUER_ID` and `APP_STORE_API_KEY` in **Settings → Environment**.
+
+---
+
+## Google Play Store
+
+- Managed via the **`androidpublisher`** v3 API.
+- Replaces manual Console uploads using a service account JSON key (`GOOGLE_PLAY_JSON_KEY`).
+- Select track (Production, Beta, Alpha, Internal) directly in the **Distribution** section.
 
 ---
 
@@ -115,6 +124,7 @@ All environment configuration lives in **`secrets/enviroment.json`** (git-ignore
 | **iOS** *(Mac)* | Xcode · CocoaPods · signing + provisioning |
 | **Drive** | GCP project · Drive API · OAuth client JSON |
 | **App Store** | Connect API key (`.p8`) · Issuer ID · Key ID |
+| **Play Store** | Service Account JSON key · Publisher API enabled |
 
 ---
 

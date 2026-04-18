@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Copy APK/IPA into ``outputs/`` with versioned names (Flutter ``build/`` untouched)."""
 
 from pathlib import Path

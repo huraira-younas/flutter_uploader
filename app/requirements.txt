@@ -3,3 +3,4 @@ google-auth-oauthlib>=1.0
 customtkinter>=5.2.2
 darkdetect>=0.8.0
 google-auth>=2.0
+requests>=2.31.0

@@ -30,6 +30,10 @@ def drive_creds_configured() -> bool:
     return bool(env_config_str("GOOGLE_DRIVE_CREDENTIALS_JSON"))
 
 
+def google_play_configured() -> bool:
+    return bool(env_config_str("GOOGLE_PLAY_JSON_KEY"))
+
+
 def gmail_configured() -> bool:
     return bool(env_config_str("GMAIL_USER") and env_config_str("GMAIL_APP_PASSWORD"))
 

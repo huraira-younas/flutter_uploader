@@ -7,6 +7,7 @@ from core.prerequisites import (
     appstore_api_configured,
     missing_keys_message,
     drive_creds_configured,
+    google_play_configured,
     gmail_configured,
 )
 from gui.sections.contracts import ConfigPanelHost

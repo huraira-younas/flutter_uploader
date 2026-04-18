@@ -22,6 +22,16 @@ See also [`README.md`](README.md).
 | `GMAIL_USER` · `GMAIL_APP_PASSWORD` | Optional · Gmail for build reports & Drive link email |
 | `LOGS_DISTRIBUTION` · `DISTRIBUTION` | JSON arrays in **`secrets/enviroment.json`** · build-report vs Drive-link recipient lists |
 | `APP_STORE_ISSUER_ID` · `APP_STORE_API_KEY` | iOS upload (`altool`) |
+| `GOOGLE_PLAY_JSON_KEY` | Service Account JSON key (path) for Play Store upload |
+
+---
+
+## Google Play
+
+1. [Google Cloud Console](https://console.cloud.google.com/) — project → enable **Google Play Android Publisher API**.
+2. Create specialized **Service Account** → Keys → Download **JSON**.
+3. Link the Service Account in **Google Play Console** → API Access → Grant **Release Manager** permissions.
+4. Set path to the JSON key in **`GOOGLE_PLAY_JSON_KEY`**.
 
 ---
 

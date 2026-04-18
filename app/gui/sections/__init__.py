@@ -26,6 +26,7 @@ _SECTION_MOUNTS: tuple[tuple[str, Callable[[ConfigPanelHost, ctk.CTkScrollableFr
     ("android", android_section.mount),
     ("ios", ios_section.mount),
     ("post_git", post_git.mount),
+    ("distribution", distribution_section.mount),
     ("post_build", post_build_section.mount),
 )
 
@@ -41,7 +42,6 @@ def mount_config_panel(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame) -> 
     row = app_info.mount(app, scroll, row)
     for _, mount_fn in _SECTION_MOUNTS:
         row = mount_fn(app, scroll, row)
-    row = distribution_section.mount(app, scroll, row)
 
 
 def collect_gui_config(app: ConfigPanelHost) -> dict:
@@ -52,13 +52,15 @@ def collect_gui_config(app: ConfigPanelHost) -> dict:
         config_key = PIPELINE_SECTION_TO_CONFIG_SECTION.get(section_alias, section_alias)
         section_patch = parts.setdefault(config_key, {})
         section_patch["enabled"] = bool(section_var.get())
-    dist_list = parts.pop("distribution", None)
+    dist_block = parts.get("distribution")
     merged = deep_merge(get_app_config(), parts)
-    if dist_list is not None:
-        env_block = merged.get("env")
-        if not isinstance(env_block, dict):
-            env_block = {}
-        merged["env"] = {**env_block, "DISTRIBUTION": dist_list}
+    if isinstance(dist_block, dict):
+        recipients = dist_block.pop("recipients_list", None)
+        if recipients is not None:
+            env_block = merged.get("env")
+            if not isinstance(env_block, dict):
+                env_block = {}
+            merged["env"] = {**env_block, "DISTRIBUTION": recipients}
     return merged
 
 

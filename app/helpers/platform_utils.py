@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Platform detection and shutdown / sleep helpers."""
 
 from collections.abc import Callable
