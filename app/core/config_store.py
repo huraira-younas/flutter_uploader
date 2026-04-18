@@ -54,6 +54,7 @@ CONFIG_SECTION_KEYS: tuple[str, ...] = (
 )
 
 _cache: dict[str, Any] | None = None
+_section_cache: dict[str, Any] = {}
 
 
 def deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -170,7 +171,8 @@ def init_app_config(*, force_reload: bool = False) -> dict[str, Any]:
 
 def reload_app_config() -> dict[str, Any]:
     """Re-read ``config.json`` and ``secrets/enviroment.json`` from disk into the cache."""
-    global _cache
+    global _cache, _section_cache
+    _section_cache.clear()
     _cache = _read_merged_from_disk()
     return _cache
 
@@ -183,15 +185,25 @@ def get_app_config() -> dict[str, Any]:
 
 
 def get_section(name: str) -> Any:
-    """Return a deep copy of one top-level section."""
+    """Return a deep copy of one top-level section (cached)."""
+    global _section_cache
+    if name in _section_cache:
+        return copy.deepcopy(_section_cache[name])
+
     full = get_app_config()
     base_chunk = default_app_config().get(name, {})
     chunk = full.get(name, {})
+    
+    res = None
     if isinstance(chunk, dict):
-        return deep_merge(copy.deepcopy(base_chunk), copy.deepcopy(chunk))
-    if isinstance(base_chunk, list) and isinstance(chunk, list):
-        return copy.deepcopy(chunk)
-    return copy.deepcopy(base_chunk)
+        res = deep_merge(copy.deepcopy(base_chunk), copy.deepcopy(chunk))
+    elif isinstance(base_chunk, list) and isinstance(chunk, list):
+        res = copy.deepcopy(chunk)
+    else:
+        res = copy.deepcopy(base_chunk)
+    
+    _section_cache[name] = res
+    return copy.deepcopy(res)
 
 
 def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -203,7 +215,8 @@ def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
 
 def save_config(data: dict[str, Any]) -> None:
     """Persist merged config: pipeline/UI state → ``config.json``; ``env`` → ``secrets/enviroment.json``."""
-    global _cache
+    global _cache, _section_cache
+    _section_cache.clear()
     merged = deep_merge(default_app_config(), data)
     _cache = merged
     env_block = merged.get("env")

@@ -27,18 +27,18 @@
   },
   "android": {
     "steps": {
-      "build_apk": true,
-      "build_aab": true
+      "build_apk": false,
+      "build_aab": false
     },
-    "enabled": true
+    "enabled": false
   },
   "ios": {
     "steps": {
-      "pod_update": true,
-      "build_ipa": true,
+      "pod_update": false,
+      "build_ipa": false,
       "appstore_upload": true
     },
-    "enabled": true
+    "enabled": false
   },
   "distribution": {
     "steps": {
@@ -47,7 +47,7 @@
       "drive_upload": true
     },
     "google_play_track": "production",
-    "enabled": true,
+    "enabled": false,
     "recipients_list": []
   },
   "post_build": {
@@ -57,8 +57,8 @@
       "drive_upload": true
     },
     "power_mode": "Sleep",
-    "quit_after_power": true,
-    "enabled": true
+    "quit_after_power": false,
+    "enabled": false
   },
   "app_info": {
     "git_branch": "master"

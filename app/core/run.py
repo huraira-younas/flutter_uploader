@@ -18,13 +18,16 @@ from helpers.app_metadata import extract_android_pkg_name
 
 from helpers.shell import CommandRunner
 from core.config_store import env_value
-from core.constants import (
+from core.project_state import (
     flutter_project_root,
-    OUTPUTS_DIR,
-    POWER_DELAY,
     aab_dir,
     apk_dir,
     ipa_dir,
+)
+
+from core.constants import (
+    OUTPUTS_DIR,
+    POWER_DELAY,
 )
 
 from core.steps import StepDef

@@ -6,14 +6,15 @@ from collections.abc import Callable
 import customtkinter as ctk
 
 from core.config_store import (
-    PIPELINE_SECTION_TO_CONFIG_SECTION,
-    deep_merge,
-    get_app_config,
     resolved_flutter_project_root_string,
+    PIPELINE_SECTION_TO_CONFIG_SECTION,
+    get_app_config,
     save_config,
+    deep_merge,
 )
+
 from core.prerequisites import flutter_project_prereq_status
-from core.constants import set_flutter_project_root
+from core.project_state import set_flutter_project_root
 from gui.sections.contracts import ConfigPanelHost
 
 from . import android_section, app_info, common_section, distribution_section, ios_section, post_build_section, post_git, pre_git

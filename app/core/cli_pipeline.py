@@ -11,6 +11,7 @@ from core.config_store import (
     pub_upgrade_from_config,
     get_app_config,
 )
+
 from core.constants import DEFAULT_COMMIT_MESSAGE_RELEASE, DEFAULT_COMMIT_MESSAGE_PRE, DEFAULT_GIT_BRANCH
 from core.pipeline_config import (
     build_pipeline_config,
@@ -18,6 +19,7 @@ from core.pipeline_config import (
     parse_step_keys_csv,
     PipelineConfig,
 )
+
 from helpers.version import read_version
 
 
@@ -98,6 +100,7 @@ def resolve_cli_pipeline_config(args: argparse.Namespace, *, include_ios: bool) 
         ios_on = False
 
     post_on = _cli_bool(pipeline_section_enabled("post"), args.post_on)
+    dist_on = _cli_bool(pipeline_section_enabled("distribution"), args.distribution_on)
 
     enabled_steps = (
         frozenset(parse_step_keys_csv(args.steps))
@@ -122,4 +125,5 @@ def resolve_cli_pipeline_config(args: argparse.Namespace, *, include_ios: bool) 
         version=version,
         build=build_num,
         git_branch=str(git_branch),
+        distribution_enabled=dist_on,
     )

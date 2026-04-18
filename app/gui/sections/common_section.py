@@ -37,7 +37,8 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
         row_pady = (PAD["sm"], PAD["md"]) if offset == n - 1 else (PAD["sm"], PAD["sm"])
         if key == "pub_get":
             _build_pub_row(
-                app, c, grid_row=grid_r, pub_var=overrides[key], pady=row_pady,
+                app, c, grid_row=grid_r, label=label, desc=desc,
+                pub_var=overrides[key], pady=row_pady,
             )
         else:
             W.add_step_row(
@@ -65,6 +66,8 @@ def _build_pub_row(
     parent: ctk.CTkFrame,
     *,
     grid_row: int,
+    label: str,
+    desc: str,
     pub_var: ctk.BooleanVar,
     pady: tuple[int, int] | None = None,
 ) -> None:
@@ -73,8 +76,8 @@ def _build_pub_row(
         app=app,
         key="pub_get",
         section_key="common",
-        label="Dependencies",
-        desc="pub get or pub upgrade",
+        label=label,
+        desc=desc,
         grid_row=grid_row,
         default_on=False,
         var=pub_var,

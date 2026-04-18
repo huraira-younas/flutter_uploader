@@ -7,7 +7,7 @@ StepResult = tuple[str, bool, float]
 
 COMMON_STEPS: list[StepDef] = [
     ("clean", "Flutter Clean", "Remove build cache", False),
-    ("pub_get", "Dependencies", "pub get or pub upgrade", False),
+    ("pub_get", "Pub", "Install dependencies", False),
 ]
 
 ANDROID_STEPS: list[StepDef] = [

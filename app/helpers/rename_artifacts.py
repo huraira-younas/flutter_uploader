@@ -5,7 +5,8 @@ from pathlib import Path
 import shutil
 import re
 
-from core.constants import OUTPUTS_DIR, ABI_PATTERN, PLAIN_RELEASE, aab_dir, apk_dir, ipa_dir, flutter_project_root
+from core.project_state import aab_dir, apk_dir, ipa_dir, flutter_project_root
+from core.constants import OUTPUTS_DIR, ABI_PATTERN, PLAIN_RELEASE
 from helpers.app_metadata import get_current_app_name
 from helpers.types import LogFn
 

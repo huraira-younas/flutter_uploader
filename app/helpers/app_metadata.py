@@ -1,42 +1,65 @@
 from __future__ import annotations
-
 import xml.etree.ElementTree as ET
 from pathlib import Path
 import plistlib
 import re
 
+from core.project_state import flutter_project_root, register_cache_cleaner
+from core.constants import APP_TITLE
+
+# In-memory cache to avoid repeated disk reads during UI refreshes/pipeline.
+_app_name_cache: str | None = None
+_pkg_cache: str | None = None
+
+def clear_metadata_cache() -> None:
+    """Wipe the metadata cache (call this when project root changes)."""
+    global _pkg_cache, _app_name_cache
+    _pkg_cache = None
+    _app_name_cache = None
+
+register_cache_cleaner(clear_metadata_cache)
+
 def extract_android_pkg_name(project_root: Path) -> str | None:
     """Attempt to find the Android package name (applicationId or namespace) in build.gradle."""
+    global _pkg_cache
+    if _pkg_cache:
+        return _pkg_cache
+        
     gradle_path = project_root / "android" / "app" / "build.gradle"
     if not gradle_path.exists():
         return None
     
     try:
         content = gradle_path.read_text(encoding="utf-8")
-        # Try applicationId
         match = re.search(r'applicationId\s+["\']([^"\']+)["\']', content)
         if match:
-            return match.group(1).strip()
-        # Try namespace (modern AGP 7+)
+            _pkg_cache = match.group(1).strip()
+            return _pkg_cache
+            
         match = re.search(r'namespace\s+["\']([^"\']+)["\']', content)
         if match:
-            return match.group(1).strip()
+            _pkg_cache = match.group(1).strip()
+            return _pkg_cache
     except Exception:
         pass
     return None
 
 def get_current_app_name() -> str:
     """Centralized helper to get the app name with full error handling and fallback."""
+    global _app_name_cache
+    if _app_name_cache:
+        return _app_name_cache
+        
     try:
-        from core.constants import flutter_project_root
-        return _extract_app_name(flutter_project_root())
+        _app_name_cache = _extract_app_name(flutter_project_root())
+        return _app_name_cache
     except Exception:
-        return "Flutter Uploader"
+        return APP_TITLE
 
 def _extract_app_name(project_root: Path) -> str:
     """
     Unified App Name extraction from Android, iOS or pubspec.yaml.
-    Returns "Flutter App" if nothing is found.
+    Returns the fallback APP_TITLE if nothing is found.
     """
     # 1. Try iOS (usually the most reliable for 'Display Name')
     ios_name = _extract_ios_app_name(project_root)
@@ -51,10 +74,9 @@ def _extract_app_name(project_root: Path) -> str:
     # 3. Fallback to pubspec 'name'
     pubspec_name = _extract_pubspec_name(project_root)
     if pubspec_name:
-        # Clean up snakeify if needed, but per user request "show AppName only"
         return pubspec_name.replace("_", " ").title()
 
-    return "Flutter App"
+    return APP_TITLE
 
 def _extract_ios_app_name(project_root: Path) -> str | None:
     plist_path = project_root / "ios" / "Runner" / "Info.plist"

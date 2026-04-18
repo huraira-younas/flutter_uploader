@@ -16,8 +16,9 @@ from core.config_store import (
     get_section,
     save_config,
 )
-from core.constants import set_flutter_project_root
+
 from gui.widgets import card, scrollable_frame, section_label
+from core.project_state import set_flutter_project_root
 from gui.theme import (
     available_themes, get_theme, set_theme,
     COLORS, RADIUS, PAD, Theme,
@@ -84,9 +85,9 @@ class SettingsPanel(ctk.CTkFrame):
             "GOOGLE_DRIVE_TOKEN_JSON": ctk.StringVar(value=str(env.get("GOOGLE_DRIVE_TOKEN_JSON") or "")),
             "GOOGLE_DRIVE_FOLDER_ID": ctk.StringVar(value=str(env.get("GOOGLE_DRIVE_FOLDER_ID") or "")),
             "APP_STORE_ISSUER_ID": ctk.StringVar(value=str(env.get("APP_STORE_ISSUER_ID") or "")),
+            "GMAIL_APP_PASSWORD": ctk.StringVar(value=str(env.get("GMAIL_APP_PASSWORD") or "")),
             "APP_STORE_API_KEY": ctk.StringVar(value=str(env.get("APP_STORE_API_KEY") or "")),
             "GMAIL_USER": ctk.StringVar(value=str(env.get("GMAIL_USER") or "")),
-            "GMAIL_APP_PASSWORD": ctk.StringVar(value=str(env.get("GMAIL_APP_PASSWORD") or "")),
         }
 
         def _list_to_csv(block: object) -> str:

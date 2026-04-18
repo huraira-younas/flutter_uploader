@@ -10,6 +10,7 @@ from core.constants import (
     MAX_REPORT_LOG_LINES,
     APP_TITLE,
 )
+from helpers.app_metadata import get_current_app_name
 from core.bootstrap import ensure_dependencies
 from core.steps import StepResult
 
@@ -66,7 +67,7 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     )
 
     sections = parser.add_argument_group("section toggles")
-    for key in ("common", "android", "ios", "post"):
+    for key in ("common", "android", "ios", "distribution", "post"):
         sections.add_argument(
             f"--{key}", action="store_true", default=None, dest=f"{key}_on",
             help=f"Enable {key} section.",
@@ -196,7 +197,8 @@ def _run_cli(args: argparse.Namespace) -> None:
         mark = "✓" if ok else "✗"
         log(f"  {mark} {name} — {elapsed_str}\n")
 
-    log(f"{APP_TITLE} — {platforms_str}\n")
+    app_name = get_current_app_name()
+    log(f"{app_name} — {platforms_str}\n")
     log(f"Flutter builds (Android APK/AAB, iOS IPA)\n")
     log(f"version={cfg.version} build={cfg.build}\n\n")
 

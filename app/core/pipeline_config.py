@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Callable, TypedDict
+from dataclasses import dataclass
 
 from core.constants import (
     DEFAULT_COMMIT_MESSAGE_RELEASE,
@@ -163,10 +163,14 @@ def build_pipeline_config(
     build: str = "1",
     google_play_track: str = "production",
     git_branch: str | None = None,
+    distribution_enabled: bool = True,
 ) -> PipelineConfig:
     return PipelineConfig(
         commit_message_release=(commit_message_release or "").strip() or DEFAULT_COMMIT_MESSAGE_RELEASE,
         commit_message_pre=(commit_message_pre or "").strip() or DEFAULT_COMMIT_MESSAGE_PRE,
+        git_branch=(git_branch or "").strip() or DEFAULT_GIT_BRANCH,
+        distribution_enabled=distribution_enabled,
+        google_play_track=google_play_track,
         git_post_enabled=git_post_enabled,
         quit_after_power=quit_after_power,
         git_pre_enabled=git_pre_enabled,
@@ -180,8 +184,6 @@ def build_pipeline_config(
         recipients=recipients,
         version=version,
         build=build,
-        google_play_track=google_play_track,
-        git_branch=(git_branch or "").strip() or DEFAULT_GIT_BRANCH,
     )
 
 
