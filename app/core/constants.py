@@ -1,3 +1,4 @@
+from __future__ import annotations
 from pathlib import Path
 import json
 import sys
@@ -7,11 +8,12 @@ import re
 
 APP_DIR_NAME = "FlutterUploader"
 APP_TITLE = "Flutter Uploader"
-APP_VERSION = "5.4"
+APP_VERSION = "5.5"
 
-DEFAULT_COMMIT_MESSAGE_PRE = "pre-release cleanup"
 # Substituted at run time: ``{version}`` and ``{build}`` from pubspec.
 DEFAULT_COMMIT_MESSAGE_RELEASE = "v{version} ({build})"
+DEFAULT_COMMIT_MESSAGE_PRE = "pre-release cleanup"
+DEFAULT_GIT_BRANCH = "master"
 
 IS_WIN = sys.platform == "win32"
 

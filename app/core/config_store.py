@@ -40,6 +40,7 @@ ENVIRONMENT_JSON_PATH: Path = SECRETS_DIR / "enviroment.json"
 
 # Top-level keys in ``config.json`` / ``default_app_config()``.
 CONFIG_SECTION_KEYS: tuple[str, ...] = (
+    "git_branch",
     "post_build",
     "post_git",
     "android",
@@ -68,6 +69,7 @@ def default_app_config() -> dict[str, Any]:
     """Code defaults; user file overlays this."""
     return {
         "theme": "catppuccin_mocha",
+        "git_branch": "master",
         "env": {
             "GOOGLE_DRIVE_CREDENTIALS_JSON": "",
             "GOOGLE_DRIVE_TOKEN_JSON": "",

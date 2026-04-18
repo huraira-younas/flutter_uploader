@@ -24,12 +24,12 @@ IOS_STEPS: list[StepDef] = [
 
 COMMIT_PRE_STEPS: list[StepDef] = [
     ("git_commit_pre", "Pre-release Commit", "git add . && git commit", True),
-    ("git_pull", "Pull Master", "git pull origin master", True),
+    ("git_pull", "Pull Branch", "git pull origin {branch}", True),
 ]
 
 GIT_POST_STEPS: list[StepDef] = [
     ("git_commit_rel", "Release Commit", "git add . && git commit v{ver}", True),
-    ("git_push", "Push Master", "git push origin master", True),
+    ("git_push", "Push Branch", "git push origin {branch}", True),
 ]
 
 POST_STEPS: list[StepDef] = [

@@ -99,10 +99,10 @@ run_git_commit_pre = _run_git_commit
 run_git_commit_release = _run_git_commit
 
 
-def run_git_pull(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
+def run_git_pull(branch: str = "master", log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
     return _run_project_cmd(
-        ["git", "pull", "origin", "master"], log,
-        header="\n>> git pull origin master\n", stop_check=stop_check,
+        ["git", "pull", "origin", branch], log,
+        header=f"\n>> git pull origin {branch}\n", stop_check=stop_check,
     )
 
 
@@ -117,10 +117,10 @@ def format_release_commit_message(template: str, version: str, build: str) -> st
         return t
 
 
-def run_git_push(log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
+def run_git_push(branch: str = "master", log: LogFn = _log_noop, stop_check: StopCheckFn | None = None) -> bool:
     return _run_project_cmd(
-        ["git", "push", "origin", "master"], log,
-        header="\n>> git push origin master\n", stop_check=stop_check,
+        ["git", "push", "origin", branch], log,
+        header=f"\n>> git push origin {branch}\n", stop_check=stop_check,
     )
 
 
@@ -228,6 +228,7 @@ def _build_runners(
     commit_message_release: str = "v{version} ({build})",
     pub_upgrade: bool = False,
     power_mode: str = "Shutdown",
+    git_branch: str = "master",
 ) -> dict[str, Callable[[LogFn], bool]]:
     """Build step_key -> runner function mapping."""
     def with_stop(fn: Callable) -> Callable[[LogFn], bool]:
@@ -266,6 +267,8 @@ def _build_runners(
 
     return {
         "drive_upload":    lambda l: run_drive_upload(recipients, version, build, l, stop_check=stop_check),
+        "git_push":        lambda l: run_git_push(git_branch, log=l, stop_check=stop_check),
+        "git_pull":        lambda l: run_git_pull(git_branch, log=l, stop_check=stop_check),
         "git_commit_rel":  lambda l: run_git_commit_release(release_msg, l),
         "git_commit_pre":  lambda l: run_git_commit_pre(commit_message, l),
         "open_folders":    lambda l: run_open_outputs(l),
@@ -273,8 +276,6 @@ def _build_runners(
 
         "clean":           with_stop(run_flutter_clean),
         "pod_update":      with_stop(run_pod_update),
-        "git_push":        with_stop(run_git_push),
-        "git_pull":        with_stop(run_git_pull),
         "pub_get":         with_stop(pub_fn),
 
         "build_aab":       _build_aab_and_collect,
@@ -299,6 +300,7 @@ def run_selected(
     commit_message_release: str = "v{version} ({build})",
     pub_upgrade: bool = False,
     power_mode: str = "Shutdown",
+    git_branch: str = "master",
     quit_after_power: bool = False,
     schedule_quit_after_seconds: Callable[[float], None] | None = None,
 ) -> bool:
@@ -317,6 +319,7 @@ def run_selected(
         power_mode=power_mode,
         version=version,
         build=build,
+        git_branch=git_branch,
     )
 
     shutdown_step_ok = False

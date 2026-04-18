@@ -1,5 +1,6 @@
 {
   "theme": "one_dark",
+  "git_branch": "master",
   "pre_git": {
     "steps": {
       "git_commit_pre": true,

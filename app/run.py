@@ -39,6 +39,8 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     run.add_argument("--version", metavar="VER", help="App version (default: from pubspec.yaml).")
     run.add_argument("--build", metavar="NUM", help="Build number (default: from pubspec.yaml).")
     run.add_argument("--recipients", metavar="EMAILS", help="Comma-separated email addresses for Drive link.")
+    run.add_argument("--branch", metavar="NAME", help="Git branch for pull/push steps (default: master).")
+    run.add_argument("--ask-branch", action="store_true", help="Prompt for git branch selection before starting.")
     run.add_argument(
         "--commit-message", metavar="MSG", default=None,
         help="Pre-Git commit message (default: pre_git.commit_message in config.json).",
@@ -156,6 +158,17 @@ def _run_cli(args: argparse.Namespace) -> None:
     include_ios = is_macos()
     cfg = resolve_cli_pipeline_config(args, include_ios=include_ios)
 
+    final_branch = cfg.git_branch
+    if args.ask_branch:
+        try:
+            prompt = f"\nEnter git branch to use (default {final_branch}): "
+            user_input = input(prompt).strip()
+            if user_input:
+                final_branch = user_input
+        except (KeyboardInterrupt, EOFError):
+            print("\nAborted.")
+            sys.exit(130)
+
     if cfg.version and cfg.build:
         write_version(cfg.version, cfg.build)
 
@@ -199,6 +212,8 @@ def _run_cli(args: argparse.Namespace) -> None:
     pipeline_start = time.monotonic()
     success = False
     try:
+        kwargs = cfg.run_kwargs()
+        kwargs["git_branch"] = final_branch
         done = run_selected(
             schedule_quit_after_seconds=schedule_cli_quit,
             step_enabled=step_filter,
@@ -206,7 +221,7 @@ def _run_cli(args: argparse.Namespace) -> None:
             on_step_done=on_done,
             steps=all_steps,
             log=log,
-            **cfg.run_kwargs(),
+            **kwargs,
         )
         total = fmt_elapsed(time.monotonic() - pipeline_start)
         if done:

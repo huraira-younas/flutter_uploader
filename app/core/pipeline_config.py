@@ -8,6 +8,7 @@ from typing import Callable, TypedDict
 from core.constants import (
     DEFAULT_COMMIT_MESSAGE_RELEASE,
     DEFAULT_COMMIT_MESSAGE_PRE,
+    DEFAULT_GIT_BRANCH,
 )
 from core.steps import (
     COMMIT_PRE_STEPS,
@@ -49,6 +50,7 @@ class RunSelectedArgs(TypedDict):
     commit_message: str
     pub_upgrade: bool
     power_mode: str
+    git_branch: str
     version: str
     build: str
 
@@ -68,31 +70,33 @@ def _section_flags(cfg: PipelineConfig, *, ios_resolved: bool) -> dict[str, bool
 
 @dataclass(frozen=True, slots=True)
 class PipelineConfig:
-    commit_message_pre: str = DEFAULT_COMMIT_MESSAGE_PRE
     commit_message_release: str = DEFAULT_COMMIT_MESSAGE_RELEASE
-    power_mode: str = "Shutdown"
+    commit_message_pre: str = DEFAULT_COMMIT_MESSAGE_PRE
+    git_branch: str = DEFAULT_GIT_BRANCH
     quit_after_power: bool = False
+    power_mode: str = "Shutdown"
     version: str = "1.0.0"
     build: str = "1"
 
     enabled_steps: frozenset[str] | None = None
     recipients: str | None = None
 
+    git_post_enabled: bool = True
+    git_pre_enabled: bool = True
     android_enabled: bool = True
+    common_enabled: bool = True
     pub_upgrade: bool = False
     post_enabled: bool = True
     ios_enabled: bool = True
-    git_pre_enabled: bool = True
-    git_post_enabled: bool = True
-    common_enabled: bool = True
 
     def run_kwargs(self) -> RunSelectedArgs:
         return {
             "commit_message_release": self.commit_message_release,
-            "drive_email_link_to": self.recipients,
             "quit_after_power": self.quit_after_power,
             "commit_message": self.commit_message_pre,
+            "drive_email_link_to": self.recipients,
             "pub_upgrade": self.pub_upgrade,
+            "git_branch": self.git_branch,
             "power_mode": self.power_mode,
             "version": self.version,
             "build": self.build,
@@ -150,6 +154,7 @@ def build_pipeline_config(
     recipients: str | None = None,
     version: str = "1.0.0",
     build: str = "1",
+    git_branch: str | None = None,
 ) -> PipelineConfig:
     return PipelineConfig(
         commit_message_release=(commit_message_release or "").strip() or DEFAULT_COMMIT_MESSAGE_RELEASE,
@@ -167,6 +172,7 @@ def build_pipeline_config(
         recipients=recipients,
         version=version,
         build=build,
+        git_branch=(git_branch or "").strip() or DEFAULT_GIT_BRANCH,
     )
 
 

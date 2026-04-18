@@ -11,7 +11,7 @@ from core.config_store import (
     pub_upgrade_from_config,
     get_app_config,
 )
-from core.constants import DEFAULT_COMMIT_MESSAGE_RELEASE, DEFAULT_COMMIT_MESSAGE_PRE
+from core.constants import DEFAULT_COMMIT_MESSAGE_RELEASE, DEFAULT_COMMIT_MESSAGE_PRE, DEFAULT_GIT_BRANCH
 from core.pipeline_config import (
     build_pipeline_config,
     validate_power_mode,
@@ -58,6 +58,12 @@ def resolve_cli_pipeline_config(args: argparse.Namespace, *, include_ios: bool) 
         args.pub_mode == "pub-upgrade"
         if _arg_set(args, "pub_mode")
         else pub_upgrade_from_config()
+    )
+
+    git_branch = (
+        args.branch
+        if _arg_set(args, "branch")
+        else cfg_file.get("git_branch", DEFAULT_GIT_BRANCH)
     )
 
     power_raw = (
@@ -115,4 +121,5 @@ def resolve_cli_pipeline_config(args: argparse.Namespace, *, include_ios: bool) 
         recipients=recipients,
         version=version,
         build=build_num,
+        git_branch=str(git_branch),
     )

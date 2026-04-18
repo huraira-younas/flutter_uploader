@@ -125,6 +125,7 @@ class BuildApp(ctk.CTk):
         self._commit_msg_pre: ctk.StringVar | None = None
         self.recipients_var: ctk.StringVar | None = None
         self.version_var: ctk.StringVar | None = None
+        self._git_branch: ctk.StringVar | None = None
         self._power_mode: ctk.StringVar | None = None
         self._pub_mode: ctk.StringVar | None = None
         self.build_var: ctk.StringVar | None = None
@@ -177,17 +178,19 @@ class BuildApp(ctk.CTk):
             self._section_bool_vars[k].clear()
         self.step_progress_bars.clear()
         self.step_status_labels.clear()
+        self._lockable_widgets.clear()
         self.step_switches.clear()
         self.step_vars.clear()
-        self._lockable_widgets.clear()
-        self.version_var = None
-        self.build_var = None
-        self.recipients_var = None
-        self._commit_msg_pre = None
+
         self._commit_msg_release = None
-        self._pub_mode = None
-        self._power_mode = None
         self._quit_after_power = None
+        self._commit_msg_pre = None
+        self.recipients_var = None
+        self.version_var = None
+        self._power_mode = None
+        self._git_branch = None
+        self.build_var = None
+        self._pub_mode = None
 
     def rebuild_config_panel(self) -> None:
         """Reload merged config from disk and rebuild the Config tab (prereqs, env, secrets)."""
@@ -530,6 +533,7 @@ class BuildApp(ctk.CTk):
             recipients=self.recipients_var.get().strip() or None if self.recipients_var else None,
             version=(self.version_var.get().strip() if self.version_var else ""),
             build=(self.build_var.get().strip() if self.build_var else ""),
+            git_branch=(self._git_branch.get().strip() if self._git_branch else None),
         )
 
     # ── Run / Stop ───────────────────────────────────────────────────────────
