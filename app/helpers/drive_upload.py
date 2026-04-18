@@ -11,6 +11,7 @@ from core.constants import (
     LINK_PREFIX,
     MIME_MAP,
 )
+from helpers.app_metadata import get_current_app_name
 
 from core.config_store import distribution_recipients_from_config, env_value
 from helpers.types import LogFn, StopCheckFn
@@ -134,9 +135,8 @@ def upload_outputs_to_drive(
         log(f"Drive: failed to authenticate: {e}\n")
         return False
 
-    parent_folder_id = env_value("GOOGLE_DRIVE_FOLDER_ID") or None
     version_tag = f" v{version}+{build}" if version and build else ""
-    folder_name = f"ReelStay{version_tag}"
+    folder_name = f"{get_current_app_name()}{version_tag}"
 
     try:
         _delete_existing_folders(drive, folder_name, parent_folder_id, log)

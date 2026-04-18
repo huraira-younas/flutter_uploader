@@ -39,6 +39,7 @@ from core.pipeline_config import (
 )
 from core.prerequisites import flutter_project_prereq_status
 from core.steps import StepDef
+from helpers.app_metadata import get_current_app_name
 import customtkinter as ctk
 
 
@@ -206,6 +207,12 @@ class BuildApp(ctk.CTk):
         self._apply_section_enabled_states()
         self._apply_ios_mode_rules()
         self._sync_run_button()
+        self._refresh_app_title()
+
+    def _refresh_app_title(self) -> None:
+        """Update the top header title based on current project metadata."""
+        if hasattr(self, "hdr_title_lbl"):
+            self.hdr_title_lbl.configure(text=get_current_app_name())
 
     # ── UI construction ───────────────────────────────────────────────────────
 
@@ -269,7 +276,11 @@ class BuildApp(ctk.CTk):
         hdr.grid(row=0, column=0, sticky="ew", padx=PAD["lg"], pady=(PAD["lg"], 15))
         hdr.grid_columnconfigure(0, weight=1)
 
-        ctk.CTkLabel(hdr, text=APP_TITLE, font=self._fonts["title"]).grid(row=0, column=0, sticky="w")
+        self.hdr_title_lbl = ctk.CTkLabel(
+            hdr, text=get_current_app_name(), 
+            font=self._fonts["title"]
+        )
+        self.hdr_title_lbl.grid(row=0, column=0, sticky="w")
 
         self.running_status_lbl = ctk.CTkLabel(
             hdr, font=self._fonts["status"],

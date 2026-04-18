@@ -47,7 +47,8 @@
       "drive_upload": true
     },
     "google_play_track": "production",
-    "enabled": true
+    "enabled": true,
+    "recipients_list": []
   },
   "post_build": {
     "steps": {
@@ -58,5 +59,8 @@
     "power_mode": "Sleep",
     "quit_after_power": true,
     "enabled": true
+  },
+  "app_info": {
+    "git_branch": "master"
   }
 }

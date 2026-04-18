@@ -5,12 +5,24 @@ from pathlib import Path
 import shutil
 import re
 
-from core.constants import OUTPUTS_DIR, ABI_PATTERN, PLAIN_RELEASE, aab_dir, apk_dir, ipa_dir
+from core.constants import OUTPUTS_DIR, ABI_PATTERN, PLAIN_RELEASE, aab_dir, apk_dir, ipa_dir, flutter_project_root
+from helpers.app_metadata import get_current_app_name
 from helpers.types import LogFn
 
 
 def _sanitize(s: str) -> str:
     return re.sub(r"[^\w.+\-]", "", (s or "").strip()) or "0"
+
+
+def _app_prefix() -> str:
+    """Return sanitized app name prefix for filenames."""
+    try:
+        name = get_current_app_name()
+        if name == "Flutter Uploader":
+            return "" # Don't prefix if fallback
+        return _sanitize(name.replace(" ", "-")) + "-"
+    except Exception:
+        return ""
 
 
 def clear_outputs() -> None:
@@ -20,13 +32,13 @@ def clear_outputs() -> None:
     OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def _apk_dest_name(name: str, v: str, b: str) -> str | None:
+def _apk_dest_name(name: str, v: str, b: str, prefix: str) -> str | None:
     """Derive versioned filename for an APK, or None to skip."""
     m = ABI_PATTERN.match(name)
     if m:
-        return f"v{v}+{b}.{m.group(1)}.apk"
+        return f"{prefix}v{v}+{b}.{m.group(1)}.apk"
     if PLAIN_RELEASE.match(name):
-        return f"v{v}+{b}.apk"
+        return f"{prefix}v{v}+{b}.apk"
     return None
 
 
@@ -37,8 +49,9 @@ def _copy_apks(v: str, b: str, log: LogFn, dest: Path) -> bool:
         return True
 
     log(f"Copying APKs to outputs …\n")
+    prefix = _app_prefix()
     for apk in apks:
-        new_name = _apk_dest_name(apk.name, v, b)
+        new_name = _apk_dest_name(apk.name, v, b, prefix)
         if not new_name:
             log(f"  Skip: {apk.name}\n")
             continue
@@ -57,10 +70,11 @@ def _copy_ipas(v: str, b: str, log: LogFn, dest: Path) -> bool:
         log("No IPA files found to copy.\n")
         return True
 
-    log(f"Copying IPAs → v{v}+{b}.ipa\n")
+    log(f"Copying IPAs …\n")
+    prefix = _app_prefix()
     for idx, ipa in enumerate(ipas):
         suffix = f".{idx}" if idx > 0 else ""
-        new_name = f"v{v}+{b}{suffix}.ipa"
+        new_name = f"{prefix}v{v}+{b}{suffix}.ipa"
         try:
             shutil.copy2(str(ipa), str(dest / new_name))
             log(f"  {ipa.name} → {new_name}\n")
@@ -86,9 +100,10 @@ def _copy_aabs(v: str, b: str, log: LogFn, dest: Path) -> bool:
         return True
 
     log("Copying AAB(s) to outputs …\n")
+    prefix = _app_prefix()
     for idx, aab in enumerate(aabs):
         suffix = f".{idx}" if idx > 0 else ""
-        new_name = f"v{v}+{b}{suffix}.aab"
+        new_name = f"{prefix}v{v}+{b}{suffix}.aab"
         try:
             shutil.copy2(str(aab), str(dest / new_name))
             log(f"  {aab.name} → {new_name}\n")

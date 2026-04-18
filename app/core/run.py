@@ -14,7 +14,7 @@ from helpers.rename_artifacts import (
 )
 
 from helpers.google_play_upload import run_google_play_upload as lib_google_play_upload
-from helpers.android_utils import extract_package_name
+from helpers.app_metadata import extract_android_pkg_name
 
 from helpers.shell import CommandRunner
 from core.config_store import env_value
@@ -216,7 +216,7 @@ def run_google_play_upload(
 ) -> bool:
     """Auto-detect package name and upload AAB to Google Play."""
     project_root = flutter_project_root()
-    packageName = extract_package_name(project_root)
+    packageName = extract_android_pkg_name(project_root)
     if not packageName:
         log("Google Play: Could not auto-detect Package Name from build.gradle. Skipping.\n")
         return False
