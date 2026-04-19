@@ -1,5 +1,7 @@
-# <img src="app/assets/icon.png" width="48" height="48" align="left" alt="Icon"> Flutter Uploader
-<br/>
+<div align="center">
+  <img src="app/assets/icon.png" width="128" height="128" alt="Logo">
+  <h1>Flutter Uploader</h1>
+</div>
 
 > Build, sign, upload, and distribute Flutter apps — one command, both platforms.
 
@@ -10,7 +12,7 @@
 ### From source (development)
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/huraira-younas/flutter_uploader
 cd flutter_uploader
 python3 app/run.py          # GUI — Windows: python app\run.py
 python3 app/run.py --cli    # headless
