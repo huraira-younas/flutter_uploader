@@ -41,12 +41,12 @@
     "enabled": true
   },
   "distribution": {
+    "google_play_track": "production",
     "steps": {
       "google_play_upload": false,
       "appstore_upload": false,
       "drive_upload": true
     },
-    "google_play_track": "production",
     "enabled": false,
     "recipients_list": []
   },

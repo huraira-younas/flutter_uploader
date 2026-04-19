@@ -6,6 +6,7 @@ from tkinter import filedialog
 import sys
 import os
 
+from helpers.platform_utils import is_macos
 import customtkinter as ctk
 
 from core.config_store import (
@@ -211,9 +212,12 @@ class SettingsPanel(ctk.CTkFrame):
         _row("OAuth client JSON", "GOOGLE_DRIVE_CREDENTIALS_JSON", browse="file")
         _row("Token JSON (optional)", "GOOGLE_DRIVE_TOKEN_JSON", browse="file")
         _row("Parent folder ID (optional)", "GOOGLE_DRIVE_FOLDER_ID")
-        _subsection("iOS / App Store")
-        _row("Issuer ID", "APP_STORE_ISSUER_ID")
-        _row("API Key ID", "APP_STORE_API_KEY")
+
+        if is_macos():
+            _subsection("iOS / App Store")
+            _row("Issuer ID", "APP_STORE_ISSUER_ID")
+            _row("API Key ID", "APP_STORE_API_KEY")
+        
         _subsection("Google Console")
         _row("Package Name (optional)", "GOOGLE_PLAY_PACKAGE_NAME")
         _row("Service Account JSON", "GOOGLE_PLAY_JSON_KEY", browse="file")

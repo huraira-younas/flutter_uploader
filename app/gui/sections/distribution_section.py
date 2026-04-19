@@ -5,11 +5,13 @@ from __future__ import annotations
 import customtkinter as ctk
 
 from core.config_store import distribution_recipients_from_config, get_app_config, parse_recipients
-from core.steps import DISTRIBUTION_STEPS
+from gui.widgets import card, section_label, segmented_button
 from gui.sections.contracts import ConfigPanelHost
 from gui.sections import prerequisites as P
-from gui.widgets import card, section_label, segmented_button
+from helpers.platform_utils import is_macos
 from gui.sections import widgets as W
+
+from core.steps import DISTRIBUTION_STEPS
 from gui.theme import COLORS, PAD, RADIUS
 
 
@@ -27,7 +29,7 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
         off += 1
         app._steps_disabled_by_prereq.add("google_play_upload")
 
-    if not P.appstore_api_configured():
+    if is_macos() and not P.appstore_api_configured():
         W.build_prereq_banner(
             c, row=off, message=P.missing_keys_message(("APP_STORE_ISSUER_ID", "APP_STORE_API_KEY")),
             fonts=app._fonts, tone="warn"
@@ -76,6 +78,8 @@ def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int
 
     # 4. Remaining Upload Steps (AppStore, Drive)
     for other_step in DISTRIBUTION_STEPS[1:]:
+        if other_step[0] == "appstore_upload" and not is_macos():
+            continue
         W.add_step_row(
             c, app=app, key=other_step[0], label=other_step[1], desc=other_step[2],
             section_key="distribution", grid_row=off, default_on=other_step[3]
