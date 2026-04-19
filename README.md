@@ -1,82 +1,124 @@
 <div align="center">
-  <img src="app/assets/icon.png" width="128" height="128" alt="Logo">
+  <img src="app/assets/icon.png" width="160" height="160" alt="Flutter Uploader Logo">
   <h1>Flutter Uploader</h1>
+  <p align="center">
+    <strong>One command. Two platforms. Zero friction.</strong>
+    <br />
+    The ultimate automated pipeline for building, signing, and distributing Flutter applications.
+  </p>
+
+  <p align="center">
+    <img src="https://img.shields.io/badge/version-5.5.1-blue.svg" alt="Version 5.5.1">
+    <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS-lightgrey.svg" alt="Platform">
+    <img src="https://img.shields.io/badge/built%20with-Python-blue" alt="Built with Python">
+    <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License MIT">
+  </p>
 </div>
 
-> Build, sign, upload, and distribute Flutter apps — one command, both platforms.
+---
+
+## 🚀 Overview
+
+**Flutter Uploader** is a powerful CI/CD-inspired desktop utility designed to handle the heavy lifting of Flutter application distribution. Whether you're targeting the **Android Play Store**, **Apple App Store**, or manual distribution via **Google Drive**, this tool orchestrates the entire workflow from code cleanup to final release.
+
+Available as a **Modern GUI** (built with CustomTkinter) or a **Headless CLI**, it ensures your release process is consistent, repeatable, and fast.
+
+## ✨ Key Features
+
+- 🏗️ **Unified Pipeline**: Manage Clean, Pub Get, Build, and Sign steps for both platforms in one place.
+- 🍏 **iOS Excellence**: Automatic `pod install`, Archive, and IPA export (requires macOS).
+- 🤖 **Android Power**: Build release APKs and App Bundles (AAB) with ease.
+- ☁️ **Cloud Sync**: Direct integration with Google Drive for instant artifact sharing.
+- 🏪 **Store Ready**: Direct upload to **TestFlight** (iOS) and **Play Store Tracks** (Android).
+- 🎨 **Beautiful UI**: Modern, responsive interface with **7+ premium themes** (Dracula, Nord, Tokyo Night, etc.).
+- 🤖 **Automation**: Fully integrated GitHub Actions workflow for building native installers.
+- 📧 **Build Reports**: Automatic HTML build reports sent via Gmail upon completion.
+- 🔒 **Secure**: All secrets and keys are stored locally and git-ignored.
 
 ---
 
-## Installation
+## 🛠️ Tech Stack
 
-### From source (development)
+- **Core Logic**: Python 3.10+
+- **GUI Framework**: [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter)
+- **Packaging**: [PyInstaller](https://www.pyinstaller.org/)
+- **Installer Engines**: [Inno Setup](https://jrsoftware.org/isinfo.php) (Windows) & `hdiutil` (macOS DMG)
+- **APIs**: Google Drive V3, Android Publisher V3, App Store Connect (`xcrun altool`)
+
+---
+
+## 🚦 Getting Started
+
+### 1. Installation (Development)
+
+Clone the repository and run the application source:
 
 ```bash
+# Clone the repository
 git clone https://github.com/huraira-younas/flutter_uploader
+
+# Navigate to the project root
 cd flutter_uploader
-python3 app/run.py          # GUI — Windows: python app\run.py
-python3 app/run.py --cli    # headless
+
+# Run the GUI
+python app/run.py
+
+# Run the CLI (Headless mode)
+python app/run.py --cli
 ```
 
-Dependencies are installed automatically on first launch. Pass `--no-install` to skip.
+> **Note**: Dependencies are handled automatically on the first launch.
 
-### Installers (no Python required)
+### 2. Native Installers (Ready to Use)
 
-Pre-built installers let end users double-click and go:
+For a professional experience, use the pre-built installers:
 
-| Platform    | Format         | Build command  |
-| :---------- | :------------- | :------------- |
-| **Windows** | Inno Setup EXE | `install.cmd`  |
-| **macOS**   | DMG            | `./install.sh` |
-
-Full packaging guide: [`installer/INSTALLER_GUIDE.md`](installer/INSTALLER_GUIDE.md).
+| Platform | Installer Type | Command to Build |
+| :--- | :--- | :--- |
+| **Windows** | `.exe` (Inno Setup) | `install.cmd` |
+| **macOS** | `.dmg` (Disk Image) | `./install.sh` |
 
 ---
 
-## Prerequisites
+## 📋 Prerequisites
 
-| Topic           | You need                                                 |
-| :-------------- | :------------------------------------------------------- |
-| **Core**        | Python 3.10+ · Flutter · Git on `PATH`                   |
-| **iOS** _(Mac)_ | Xcode · CocoaPods · signing + provisioning               |
-| **Drive**       | GCP project · Drive API · OAuth client JSON              |
-| **App Store**   | Connect API key (`.p8`) · Issuer ID · Key ID             |
-| **Play Store**  | Service Account JSON key · Android Developer API enabled |
+| Category | Requirement |
+| :--- | :--- |
+| **Core** | Python 3.10+, Flutter SDK, Git |
+| **iOS / macOS** | Xcode, CocoaPods, Apple Developer Account |
+| **Google Drive** | GCP Project with Drive API enabled + OAuth JSON |
+| **App Store** | App Store Connect API Key (`.p8`) |
+| **Play Store** | Google Play Service Account JSON Key |
 
 ---
 
-## Project layout
+## 📂 Project Architecture
 
-```
+```bash
 flutter_uploader/
-├── app/                   # application source
-│   ├── README.md          # full app documentation
-│   ├── CLI_REFERENCE.md   # CLI flags & examples
-│   ├── ENVIRONMENT.md     # environment variable reference
-│   ├── core/              # pipeline engine, config, constants
-│   ├── gui/               # CustomTkinter GUI
-│   ├── helpers/            # shell, drive upload, build reports
-│   ├── secrets/           # enviroment.json (git-ignored)
-│   ├── outputs/           # build artifacts (git-ignored)
-│   └── logs/              # run logs (git-ignored)
-├── installer/             # packaging scripts & configs
-│   ├── INSTALLER_GUIDE.md
-│   ├── packaging/         # PyInstaller specs & entry points
-│   ├── scripts/           # build_win.ps1, build_mac.sh
-│   ├── windows/           # Inno Setup .iss, uninstall script
-│   └── mac/               # DMG builder, sign/notarize, uninstall
-├── install.cmd            # one-step Windows installer build
-├── install.sh             # one-step macOS installer build
-└── README.md              # ← you are here
+├── app/                   # Core application source
+│   ├── core/              # Pipeline engine & logic
+│   ├── gui/               # CustomTkinter interface
+│   ├── assets/            # App icons & branding
+│   └── secrets/           # environment.json (Private)
+├── .github/               # Automated CI/CD Workflows
+├── installer/             # Packaging scripts & configs
+├── dist-installer/        # Final built installers (Windows/Mac)
+├── install.cmd            # One-click Windows Build helper
+└── install.sh             # One-click macOS Build helper
 ```
 
 ---
 
-## Documentation
+## 📖 Extended Documentation
 
-| Doc                                                            | Description                                             |
-| :------------------------------------------------------------- | :------------------------------------------------------ |
-| [`app/README.md`](app/README.md)                               | App usage: pipeline, settings, themes, Drive, App Store |
-| [`app/CLI_REFERENCE.md`](app/CLI_REFERENCE.md)                 | CLI flags, section toggles, step selection              |
-| [`app/ENVIRONMENT.md`](app/ENVIRONMENT.md)                     | Environment variables & secrets setup                   |
-| [`installer/INSTALLER_GUIDE.md`](installer/INSTALLER_GUIDE.md) | Building Windows EXE / macOS DMG installers             |
+- 📝 **[App Usage Guide](app/README.md)**: Deep dive into settings, themes, and Drive setup.
+- ⌨️ **[CLI Reference](app/CLI_REFERENCE.md)**: Full list of flags for headless automation.
+- 🔐 **[Secrets & Environment](app/ENVIRONMENT.md)**: How to configure your API keys.
+- 📦 **[Packaging Guide](installer/INSTALLER_GUIDE.md)**: Detailed instructions for building native binaries.
+
+---
+
+<div align="center">
+  <p>Made with ❤️ by <b>Senpai</b></p>
+</div>
