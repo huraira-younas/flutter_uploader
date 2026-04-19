@@ -268,10 +268,30 @@ def enabled_step_keys_from_config() -> frozenset[str]:
 
 
 def pipeline_section_enabled(name: str, *, include_ios_default: bool = True) -> bool:
-    """Whether a pipeline section alias is enabled per persisted config."""
+    """Whether a pipeline section alias is enabled per persisted config.
+    Defaults to True only if prerequisites are met (folders/keys exist)."""
     cfg = get_app_config()
+    block = cfg.get("env")
+    env = block if isinstance(block, dict) else {}
+    root_raw = str(env.get("FLUTTER_PROJECT_ROOT") or "").strip()
     config_key = PIPELINE_SECTION_TO_CONFIG_SECTION.get(name, name)
-    default_enabled = include_ios_default if config_key == "ios" else True
+
+    # Calculate smart default based on readiness
+    if config_key == "android":
+        default_enabled = bool(root_raw and (Path(root_raw).expanduser().resolve() / "android").is_dir())
+    elif config_key == "ios":
+        on_mac = sys.platform == "darwin"
+        default_enabled = on_mac and include_ios_default and bool(
+            root_raw and (Path(root_raw).expanduser().resolve() / "ios").is_dir()
+        )
+    elif config_key == "distribution":
+        has_play = bool(env.get("GOOGLE_PLAY_JSON_KEY"))
+        has_apple = bool(env.get("APP_STORE_ISSUER_ID") and env.get("APP_STORE_API_KEY"))
+        has_drive = bool(env.get("GOOGLE_DRIVE_CREDENTIALS_JSON"))
+        default_enabled = has_play or has_apple or has_drive
+    else:
+        default_enabled = True
+
     return bool((cfg.get(config_key) or {}).get("enabled", default_enabled))
 
 

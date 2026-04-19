@@ -219,9 +219,9 @@ def run_google_play_upload(
 ) -> bool:
     """Auto-detect package name and upload AAB to Google Play."""
     project_root = flutter_project_root()
-    packageName = extract_android_pkg_name(project_root)
+    packageName = env_value("GOOGLE_PLAY_PACKAGE_NAME") or extract_android_pkg_name(project_root)
     if not packageName:
-        log("Google Play: Could not auto-detect Package Name from build.gradle. Skipping.\n")
+        log("Google Play: Could not auto-detect Package Name from build.gradle and no override found. Skipping.\n")
         return False
     
     json_key_path_str = env_value("GOOGLE_PLAY_JSON_KEY")

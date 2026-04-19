@@ -84,6 +84,8 @@ class SettingsPanel(ctk.CTkFrame):
             "GOOGLE_DRIVE_CREDENTIALS_JSON": ctk.StringVar(value=str(env.get("GOOGLE_DRIVE_CREDENTIALS_JSON") or "")),
             "GOOGLE_DRIVE_TOKEN_JSON": ctk.StringVar(value=str(env.get("GOOGLE_DRIVE_TOKEN_JSON") or "")),
             "GOOGLE_DRIVE_FOLDER_ID": ctk.StringVar(value=str(env.get("GOOGLE_DRIVE_FOLDER_ID") or "")),
+            "GOOGLE_PLAY_PACKAGE_NAME": ctk.StringVar(value=str(env.get("GOOGLE_PLAY_PACKAGE_NAME") or "")),
+            "GOOGLE_PLAY_JSON_KEY": ctk.StringVar(value=str(env.get("GOOGLE_PLAY_JSON_KEY") or "")),
             "APP_STORE_ISSUER_ID": ctk.StringVar(value=str(env.get("APP_STORE_ISSUER_ID") or "")),
             "GMAIL_APP_PASSWORD": ctk.StringVar(value=str(env.get("GMAIL_APP_PASSWORD") or "")),
             "APP_STORE_API_KEY": ctk.StringVar(value=str(env.get("APP_STORE_API_KEY") or "")),
@@ -162,23 +164,23 @@ class SettingsPanel(ctk.CTkFrame):
                 border_width=1,
                 height=28,
                 show="•" if is_secret else None,
+                state="disabled" if browse else "normal",
             )
             # sticky=new: keep entry top-aligned if label wraps to multiple lines (ew alone centers vertically).
-            entry.grid(row=er, column=1, padx=(0, PAD["sm"]), pady=self._ENV_ROW_PAD, sticky="new")
-            if browse == "file":
-                ctk.CTkButton(
-                    env_outer, text="Browse", width=88, corner_radius=RADIUS["btn"],
-                    command=lambda k=key, t=label: _browse_file(k, title=t),
-                ).grid(row=er, column=2, padx=(0, PAD["lg"]), pady=self._ENV_ROW_PAD, sticky="ne")
-            elif browse == "dir":
-                ctk.CTkButton(
-                    env_outer, text="Browse", width=88, corner_radius=RADIUS["btn"],
-                    command=lambda: _browse_dir("FLUTTER_PROJECT_ROOT"),
-                ).grid(row=er, column=2, padx=(0, PAD["lg"]), pady=self._ENV_ROW_PAD, sticky="ne")
+            if browse:
+                entry.grid(row=er, column=1, padx=(0, PAD["sm"]), pady=self._ENV_ROW_PAD, sticky="new")
+                if browse == "file":
+                    ctk.CTkButton(
+                        env_outer, text="Browse", width=88, corner_radius=RADIUS["btn"],
+                        command=lambda k=key, t=label: _browse_file(k, title=t),
+                    ).grid(row=er, column=2, padx=(0, PAD["lg"]), pady=self._ENV_ROW_PAD, sticky="ne")
+                elif browse == "dir":
+                    ctk.CTkButton(
+                        env_outer, text="Browse", width=88, corner_radius=RADIUS["btn"],
+                        command=lambda: _browse_dir("FLUTTER_PROJECT_ROOT"),
+                    ).grid(row=er, column=2, padx=(0, PAD["lg"]), pady=self._ENV_ROW_PAD, sticky="ne")
             else:
-                ctk.CTkFrame(env_outer, fg_color="transparent", width=88, height=1).grid(
-                    row=er, column=2, padx=(0, PAD["lg"]), pady=self._ENV_ROW_PAD, sticky="nw",
-                )
+                entry.grid(row=er, column=1, columnspan=2, padx=(0, PAD["lg"]), pady=self._ENV_ROW_PAD, sticky="new")
             er += 1
 
         def _row_var(label: str, var: ctk.StringVar, *, is_secret: bool = False) -> None:
@@ -200,11 +202,7 @@ class SettingsPanel(ctk.CTkFrame):
                 height=28,
                 show="•" if is_secret else None,
             )
-            # Same grid as ``_row`` without Browse: entry only in column 1, spacer column 2.
-            entry.grid(row=er, column=1, padx=(0, PAD["sm"]), pady=self._ENV_ROW_PAD, sticky="new")
-            ctk.CTkFrame(env_outer, fg_color="transparent", width=88, height=1).grid(
-                row=er, column=2, padx=(0, PAD["lg"]), pady=self._ENV_ROW_PAD, sticky="nw",
-            )
+            entry.grid(row=er, column=1, columnspan=2, padx=(0, PAD["lg"]), pady=self._ENV_ROW_PAD, sticky="new")
             er += 1
 
         _subsection("Project")
@@ -216,12 +214,15 @@ class SettingsPanel(ctk.CTkFrame):
         _subsection("iOS / App Store")
         _row("Issuer ID", "APP_STORE_ISSUER_ID")
         _row("API Key ID", "APP_STORE_API_KEY")
+        _subsection("Google Console")
+        _row("Package Name (optional)", "GOOGLE_PLAY_PACKAGE_NAME")
+        _row("Service Account JSON", "GOOGLE_PLAY_JSON_KEY", browse="file")
         _subsection("Email")
         _row("Gmail address", "GMAIL_USER")
         _row("Gmail app password", "GMAIL_APP_PASSWORD", is_secret=True)
         _subsection("Logs | Distribution")
-        _row_var("Logs (build reports, comma-separated)", self._logs_distribution_var)
-        _row_var("Distribution (Drive links, comma-separated)", self._distribution_var)
+        _row_var("Report Receiver", self._logs_distribution_var)
+        _row_var("Build Distribution", self._distribution_var)
 
         ctk.CTkButton(
             env_outer,

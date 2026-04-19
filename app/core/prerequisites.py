@@ -55,3 +55,17 @@ def flutter_project_prereq_status() -> tuple[bool, str]:
     if not (p / "pubspec.yaml").is_file():
         return False, f"No pubspec.yaml in:\n{p}"
     return True, ""
+
+
+def has_android_folder() -> bool:
+    raw = env_config_str("FLUTTER_PROJECT_ROOT")
+    if not raw:
+        return False
+    return (Path(raw).expanduser().resolve() / "android").is_dir()
+
+
+def has_ios_folder() -> bool:
+    raw = env_config_str("FLUTTER_PROJECT_ROOT")
+    if not raw:
+        return False
+    return (Path(raw).expanduser().resolve() / "ios").is_dir()

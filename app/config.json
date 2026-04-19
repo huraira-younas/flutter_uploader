@@ -47,7 +47,7 @@
       "drive_upload": true
     },
     "google_play_track": "production",
-    "enabled": false,
+    "enabled": true,
     "recipients_list": []
   },
   "post_build": {
