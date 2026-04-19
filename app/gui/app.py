@@ -69,6 +69,16 @@ class BuildApp(ctk.CTk):
         self.protocol("WM_DELETE_WINDOW", self._on_closing)
 
         self.title(f"{APP_TITLE} v{APP_VERSION}")
+        
+        import os, sys
+        base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.dirname(__file__)))
+        icon_path = os.path.join(base_path, "assets", "icon.ico")
+        if not is_macos() and os.path.exists(icon_path):
+            try:
+                self.iconbitmap(icon_path)
+            except Exception:
+                pass
+
         self._show_ios = is_macos()
 
         self.resizable(False, True)

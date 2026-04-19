@@ -1,4 +1,5 @@
-# Flutter Uploader
+# <img src="app/assets/icon.png" width="48" height="48" align="left" alt="Icon"> Flutter Uploader
+<br/>
 
 > Build, sign, upload, and distribute Flutter apps — one command, both platforms.
 

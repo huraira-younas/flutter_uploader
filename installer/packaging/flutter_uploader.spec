@@ -19,6 +19,7 @@ block_cipher = None
 # built binaries because frozen UPLOADER_DIR is the exe directory, not the bundle.
 datas = [
     (str(ROOT / "app" / "config.json"), "."),
+    (str(ROOT / "app" / "assets"), "assets"),
 ]
 
 hiddenimports = []
@@ -87,7 +88,7 @@ if IS_DARWIN:
     gui_app = BUNDLE(
         gui_coll,
         name="FlutterUploader.app",
-        icon=None,
+        icon=str(ROOT / "app" / "assets" / "icon.icns") if IS_DARWIN else str(ROOT / "app" / "assets" / "icon.ico"),
         bundle_identifier="com.senpai.flutteruploader",
         info_plist=MAC_INFO_PLIST,
     )
@@ -99,6 +100,7 @@ else:
         gui_a.zipfiles,
         gui_a.datas,
         [],
+        icon=str(ROOT / "app" / "assets" / "icon.ico"),
         name="FlutterUploader",
         debug=False,
         bootloader_ignore_signals=False,
@@ -114,7 +116,7 @@ else:
     gui_app = BUNDLE(
         gui_exe,
         name="FlutterUploader.app",
-        icon=None,
+        icon=str(ROOT / "app" / "assets" / "icon.icns") if IS_DARWIN else str(ROOT / "app" / "assets" / "icon.ico"),
         bundle_identifier="com.senpai.flutteruploader",
         info_plist=MAC_INFO_PLIST,
     )
@@ -146,6 +148,7 @@ cli_exe = EXE(
     cli_a.zipfiles,
     cli_a.datas,
     [],
+    icon=str(ROOT / "app" / "assets" / "icon.ico") if not IS_DARWIN else None,
     name="FlutterUploaderCLI",
     debug=False,
     bootloader_ignore_signals=False,
