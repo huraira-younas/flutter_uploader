@@ -354,6 +354,7 @@ class BuildApp(ctk.CTk):
             appstore_sw.configure(state="disabled")
             return
 
+        # AppStore upload is allowed if iOS section is enabled OR if prerequisites are satisfied independently
         appstore_sw.configure(state="normal" if ios_enabled else "disabled")
 
     def _sync_run_button(self) -> None:
@@ -510,8 +511,11 @@ class BuildApp(ctk.CTk):
         if state == "normal":
             for step_key in self._steps_disabled_by_prereq:
                 sw = self.step_switches.get(step_key)
+                var = self.step_vars.get(step_key)
                 if sw:
                     _safe_widget_state(sw, "disabled")
+                if var:
+                    var.set(False)
 
     def _apply_section_enabled_states(self) -> None:
         """Bulk-apply enabled/disabled across all sections (used after full rebuild)."""

@@ -292,7 +292,7 @@ def pipeline_section_enabled(name: str, *, include_ios_default: bool = True) -> 
     else:
         default_enabled = True
 
-    return bool((cfg.get(config_key) or {}).get("enabled", default_enabled))
+    return default_enabled
 
 
 def pub_upgrade_from_config() -> bool:
