@@ -144,7 +144,7 @@ def add_step_row(
     app._register_section_bool_var(section_key, var)
     switch = app._track_section(section_key, ctk.CTkSwitch(
         row_frame, progress_color=COLORS["accent"],
-        text=f"{label}  —  {desc}", font=app._fonts["body"], variable=var,
+        text=f"{label}  →  {desc}", font=app._fonts["body"], variable=var,
     ))
     switch.grid(row=0, column=0, sticky="w")
     app.step_switches[key] = switch

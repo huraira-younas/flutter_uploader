@@ -30,7 +30,7 @@
       "build_apk": false,
       "build_aab": false
     },
-    "enabled": false
+    "enabled": true
   },
   "ios": {
     "steps": {
@@ -38,7 +38,7 @@
       "build_ipa": false,
       "appstore_upload": true
     },
-    "enabled": false
+    "enabled": true
   },
   "distribution": {
     "steps": {
@@ -47,7 +47,7 @@
       "drive_upload": true
     },
     "google_play_track": "production",
-    "enabled": true,
+    "enabled": false,
     "recipients_list": []
   },
   "post_build": {
@@ -58,7 +58,7 @@
     },
     "power_mode": "Sleep",
     "quit_after_power": false,
-    "enabled": false
+    "enabled": true
   },
   "app_info": {
     "git_branch": "master"
