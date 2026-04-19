@@ -1,0 +1,99 @@
+name: Build and Release Installers
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    name: Build Windows Installer
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: |
+            app/requirements.txt
+            installer/requirements-dev.txt
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+
+      - name: Build App & Installer
+        run: .\install.cmd
+        shell: cmd
+
+      - name: Upload Windows Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: dist-installer/FlutterUploader-Setup.exe
+
+  build-macos:
+    name: Build macOS Installer
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: |
+            app/requirements.txt
+            installer/requirements-dev.txt
+
+      - name: Make scripts executable
+        run: |
+          chmod +x install.sh
+          chmod +x installer/scripts/build_mac.sh
+          chmod +x installer/mac/build_dmg.sh
+          chmod +x installer/mac/uninstall.sh
+          chmod +x installer/mac/sign_and_notarize.sh
+
+      - name: Build App & DMG
+        run: ./install.sh
+        shell: bash
+
+      - name: Upload macOS Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-installer
+          path: dist-installer/FlutterUploader.dmg
+
+  release:
+    name: Create Release
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Windows Installer
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: artifacts/windows
+
+      - name: Download macOS Installer
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-installer
+          path: artifacts/macos
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          generate_release_notes: true
+          files: |
+            artifacts/windows/FlutterUploader-Setup.exe
+            artifacts/macos/FlutterUploader.dmg
