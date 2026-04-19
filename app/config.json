@@ -38,17 +38,25 @@
       "build_ipa": false,
       "appstore_upload": true
     },
-    "enabled": true
+    "enabled": false
   },
   "distribution": {
-    "google_play_track": "production",
     "steps": {
       "google_play_upload": false,
       "appstore_upload": false,
       "drive_upload": true
     },
-    "enabled": false,
-    "recipients_list": []
+    "google_play_track": "production",
+    "enabled": true,
+    "recipients_list": [
+      "bilalshahjehanbajwa@gmail.com",
+      "buttabdulhannan708@gmail.com",
+      "hurairayounas7@gmail.com",
+      "faisalbiginc@gmail.com",
+      "alahmedwaqar@gmail.com",
+      "fazielshah@gmail.com",
+      "waqas6683@gmail.com"
+    ]
   },
   "post_build": {
     "steps": {
