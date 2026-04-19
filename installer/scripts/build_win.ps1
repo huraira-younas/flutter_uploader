@@ -111,7 +111,15 @@ if (-not $Iscc) {
 Write-Host ""
 if ($Iscc) {
     Write-Host "Building Windows installer wizard (Inno Setup)..."
-    & $Iscc $Iss
+    
+    # Extract version from Python helper
+    $AppVersion = python -c "import sys; sys.path.append('app'); from helpers.version_info import UPLOADER_APP_VERSION; print(UPLOADER_APP_VERSION)"
+    if ($LASTEXITCODE -ne 0 -or -not $AppVersion) {
+        Write-Warning "Could not extract version from Python. Falling back to 0.0.0"
+        $AppVersion = "0.0.0"
+    }
+
+    & $Iscc "/DAppVersion=$AppVersion" $Iss
     Write-Host ""
 } else {
     Write-Warning "Inno Setup compiler (ISCC.exe) still not found - skipped FlutterUploader-Setup.exe."

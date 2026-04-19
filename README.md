@@ -8,7 +8,7 @@
   </p>
 
   <p align="center">
-    <img src="https://img.shields.io/badge/version-5.5.1-blue.svg" alt="Version 5.5.1">
+    <img src="https://img.shields.io/badge/version-5.6.0-blue.svg" alt="Version 5.6.0">
     <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS-lightgrey.svg" alt="Platform">
     <img src="https://img.shields.io/badge/built%20with-Python-blue" alt="Built with Python">
     <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License MIT">
@@ -73,22 +73,22 @@ python app/run.py --cli
 
 For a professional experience, use the pre-built installers:
 
-| Platform | Installer Type | Command to Build |
-| :--- | :--- | :--- |
-| **Windows** | `.exe` (Inno Setup) | `install.cmd` |
-| **macOS** | `.dmg` (Disk Image) | `./install.sh` |
+| Platform    | Installer Type      | Command to Build |
+| :---------- | :------------------ | :--------------- |
+| **Windows** | `.exe` (Inno Setup) | `install.cmd`    |
+| **macOS**   | `.dmg` (Disk Image) | `./install.sh`   |
 
 ---
 
 ## 📋 Prerequisites
 
-| Category | Requirement |
-| :--- | :--- |
-| **Core** | Python 3.10+, Flutter SDK, Git |
-| **iOS / macOS** | Xcode, CocoaPods, Apple Developer Account |
+| Category         | Requirement                                     |
+| :--------------- | :---------------------------------------------- |
+| **Core**         | Python 3.10+, Flutter SDK, Git                  |
+| **iOS / macOS**  | Xcode, CocoaPods, Apple Developer Account       |
 | **Google Drive** | GCP Project with Drive API enabled + OAuth JSON |
-| **App Store** | App Store Connect API Key (`.p8`) |
-| **Play Store** | Google Play Service Account JSON Key |
+| **App Store**    | App Store Connect API Key (`.p8`)               |
+| **Play Store**   | Google Play Service Account JSON Key            |
 
 ---
 

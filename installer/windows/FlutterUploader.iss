@@ -24,7 +24,7 @@ AppId={{3E75B6DA-7E22-4A6D-9E1E-6D4A4D5AE9A1}
 AppName={#AppName}
 SetupIconFile=..\..\app\assets\icon.ico
 
-AppVersion=5.4
+AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
 DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}

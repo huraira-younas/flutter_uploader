@@ -9,6 +9,10 @@
 from pathlib import Path
 import sys
 
+# Add app to path so we can import helpers
+sys.path.append(str(Path(SPECPATH).parent.parent / "app"))
+from helpers.version_info import UPLOADER_APP_VERSION
+
 # SPECPATH is injected by PyInstaller — the directory containing this spec file.
 ROOT = Path(SPECPATH).parent.parent
 IS_DARWIN = sys.platform == "darwin"
@@ -27,8 +31,8 @@ hiddenimports = []
 MAC_INFO_PLIST = {
     "CFBundleName": "FlutterUploader",
     "CFBundleDisplayName": "Flutter Uploader",
-    "CFBundleShortVersionString": "5.4",
-    "CFBundleVersion": "5.4",
+    "CFBundleShortVersionString": UPLOADER_APP_VERSION,
+    "CFBundleVersion": UPLOADER_APP_VERSION,
     "CFBundlePackageType": "APPL",
     "NSHighResolutionCapable": True,
     # Ensure GUI role (not background/agent), required for Tk menu setup.

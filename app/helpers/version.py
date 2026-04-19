@@ -1,5 +1,8 @@
 """Read / write the version+build from pubspec.yaml (single source of truth)."""
 
+from .version_info import UPLOADER_APP_VERSION
+
+
 from pathlib import Path
 import tempfile
 import os

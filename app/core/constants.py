@@ -5,9 +5,10 @@ import os
 import re
 
 
+from helpers.version_info import UPLOADER_APP_VERSION
+APP_VERSION = UPLOADER_APP_VERSION
 APP_DIR_NAME = "FlutterUploader"
 APP_TITLE = "Flutter Uploader"
-APP_VERSION = "5.5.1"
 
 # Substituted at run time: ``{version}`` and ``{build}`` from pubspec.
 DEFAULT_COMMIT_MESSAGE_RELEASE = "v{version} ({build})"
