@@ -5,14 +5,14 @@ from __future__ import annotations
 import customtkinter as ctk
 
 from gui.sections.contracts import ConfigPanelHost
-from core.constants import OUTPUTS_DIR
+from helpers.platform_utils import open_folder
+from gui.sections import prerequisites as P
 from core.config_store import get_section
 from gui.widgets import segmented_button
-from gui.sections import prerequisites as P
+from core.constants import OUTPUTS_DIR
 from gui.sections import widgets as W
 from core.steps import POST_STEPS
 from gui.theme import PAD
-from helpers.platform_utils import open_folder
 
 
 def mount(app: ConfigPanelHost, scroll: ctk.CTkScrollableFrame, row: int) -> int:
