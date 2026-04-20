@@ -137,6 +137,7 @@ def upload_outputs_to_drive(
 
     version_tag = f" v{version}+{build}" if version and build else ""
     folder_name = f"{get_current_app_name()}{version_tag}"
+    parent_folder_id = env_value("GOOGLE_DRIVE_FOLDER_ID") or None
 
     try:
         _delete_existing_folders(drive, folder_name, parent_folder_id, log)

@@ -3,34 +3,34 @@
   "git_branch": "master",
   "pre_git": {
     "steps": {
-      "git_commit_pre": true,
-      "git_pull": true
+      "git_commit_pre": false,
+      "git_pull": false
     },
     "commit_message": "pre-release cleanup",
-    "enabled": true
+    "enabled": false
   },
   "common": {
     "steps": {
-      "clean": true,
-      "pub_get": true
+      "clean": false,
+      "pub_get": false
     },
     "pub_mode": "pub upgrade",
-    "enabled": true
+    "enabled": false
   },
   "post_git": {
     "steps": {
-      "git_commit_rel": true,
-      "git_push": true
+      "git_commit_rel": false,
+      "git_push": false
     },
     "commit_message": "v{version} ({build})",
-    "enabled": true
+    "enabled": false
   },
   "android": {
     "steps": {
       "build_apk": false,
       "build_aab": false
     },
-    "enabled": true
+    "enabled": false
   },
   "ios": {
     "steps": {
